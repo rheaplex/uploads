@@ -25,6 +25,7 @@
 import os
 import simplejson
 import socket
+import struct
 import sys
 import time
 
@@ -34,10 +35,10 @@ import time
 ################################################################################
 
 # How many seconds of data to capture each emotion for
-SECONDS_TO_CAPTURE_EMOTION_FOR = 10
+SECONDS_TO_CAPTURE_EMOTION_FOR = 5
 
 # The delay before reading emotion data
-SECONDS_TO_WAIT_BEFORE_CAPTURING = 2
+SECONDS_TO_WAIT_BEFORE_CAPTURING = 0
 
 # The emotions to capture. For more information, see:
 # http://en.wikipedia.org/wiki/Emotion_classification#Basic_and_Complex_Emotions
@@ -55,8 +56,10 @@ CHUNK_MAX_SIZE = 256
 
 
 class EegData(object):
-    POWER_LEVELS_FILE = "power_levels.txt"
-    RAW_EEG_FILE = "raw_eeg.txt"
+    POWER_LEVELS_TSV = "power_levels.txt"
+    RAW_EEG_TSV = "raw_eeg.txt"
+    POWER_LEVELS_BIN = "power_levels.bin"
+    RAW_EEG_BIN = "raw_eeg.bin"
 
     def __init__(self):
         self.raw_eeg = []
@@ -66,12 +69,17 @@ class EegData(object):
         """Add a rawEeg state update"""
         self.raw_eeg.append((timestamp, level))
 
-    def print_raw_eeg(self, outfile, separator='\t', header=True):
+    def print_raw_eeg_tsv(self, outfile, separator='\t', header=True):
         """Print the raw eeg data"""
         if header:
             print >>outfile, "#%s" % separator.join(("timestamp", "rawEeg"))
         for eeg in self.raw_eeg:
             print >>outfile, separator.join([str(level) for level in eeg])
+
+    def write_raw_eeg_binary(self, outfile):
+        for eeg in self.raw_eeg:
+            packed = struct.pack('ff', *eeg)
+            outfile.write(packed)
 
     def add_power_levels(self, timestamp, poorSignalLevel, lowAlpha, highAlpha,
                          lowBeta, highBeta, lowGamma, highGamma, 
@@ -81,7 +89,7 @@ class EegData(object):
                                   highAlpha, lowBeta, highBeta, lowGamma,
                                   highGamma, attention, meditation))
 
-    def print_power_levels(self, outfile, separator='\t', header=True):
+    def print_power_levels_tsv(self, outfile, separator='\t', header=True):
         """Print the power levels"""
         if header:
             print >>outfile, "#%s" % separator.join(("timestamp", 
@@ -93,6 +101,13 @@ class EegData(object):
         for levels in self.power_levels:
             print >>outfile, separator.join([str(level) for level in levels])
 
+    def write_power_levels_binary(self, outfile):
+        format = ''.join(['f' for i in range(0, len(self.power_levels[0]))])
+        assert(len(format) == len(self.power_levels[0]))
+        for levels in self.power_levels:
+            packed = struct.pack(format, *levels)
+            outfile.write(packed)
+
     def populate_from_data(self, data_lines):
         """Populate this object from a list of lines of data messages"""
         poorSigLev = None
@@ -100,7 +115,6 @@ class EegData(object):
         attention = None
         for line in data_lines:
             message = simplejson.loads(line)
-            print message
             if "rawEeg" in message:
                 self.add_raw_eeg(message["timestamp"], message["rawEeg"])
             if "poorSignalLevel" in message:
@@ -141,15 +155,30 @@ class EegData(object):
         """Convert this object's fields to several tsv files in the
            enclosing folder"""
         # Save raw eeg
-        raw_eeg_filename = os.path.join(enclosing_folder, EegData.RAW_EEG_FILE)
+        raw_eeg_filename = os.path.join(enclosing_folder, EegData.RAW_EEG_TSV)
         raw_eeg = open(raw_eeg_filename, 'w')
-        self.print_raw_eeg(raw_eeg)
+        self.print_raw_eeg_tsv(raw_eeg)
         raw_eeg.close()
         # Save power levels
         levels_filename = os.path.join(enclosing_folder,
-                                       EegData.POWER_LEVELS_FILE)
+                                       EegData.POWER_LEVELS_TSV)
         levels = open(levels_filename, 'w')
-        self.print_power_levels(levels)
+        self.print_power_levels_tsv(levels)
+        levels.close()
+
+    def to_binary_files(self, enclosing_folder):
+        """Convert this object's fields to several binary files in the
+           enclosing folder"""
+        # Save raw eeg
+        raw_eeg_filename = os.path.join(enclosing_folder, EegData.RAW_EEG_BIN)
+        raw_eeg = open(raw_eeg_filename, 'w')
+        self.write_raw_eeg_binary(raw_eeg)
+        raw_eeg.close()
+        # Save power levels
+        levels_filename = os.path.join(enclosing_folder,
+                                       EegData.POWER_LEVELS_BIN)
+        levels = open(levels_filename, 'w')
+        self.write_power_levels_binary(levels)
         levels.close()
 
 
@@ -209,6 +238,7 @@ def capture_emotion(person_name, emotion, duration):
             person_emotion_path = os.path.join(person_name, emotion)
             os.mkdir(person_emotion_path)
             eeg_data.to_tsv_files(person_emotion_path)
+            eeg_data.to_binary_files(person_emotion_path)
             break
         else:
             print "Trying again..."
