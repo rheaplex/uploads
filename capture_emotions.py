@@ -83,12 +83,7 @@ class EegData(object):
         if header:
             print >>outfile, "#%s" % separator.join(("timestamp", "rawEeg"))
         for eeg in self.raw_eeg:
-            print >>outfile, separator.join([str(level) for level in eeg])
-
-    def write_raw_eeg_binary(self, outfile):
-        for eeg in self.raw_eeg:
-            packed = struct.pack('ff', *eeg)
-            outfile.write(packed)
+            print >>outfile, "%.6f\t%d" % eeg
 
     def add_power_levels(self, timestamp, poorSignalLevel, lowAlpha, highAlpha,
                          lowBeta, highBeta, lowGamma, highGamma, 
@@ -108,14 +103,7 @@ class EegData(object):
                                                      "lowGamma", "highGamma",
                                                      "attention", "meditation"))
         for levels in self.power_levels:
-            print >>outfile, separator.join([str(level) for level in levels])
-
-    def write_power_levels_binary(self, outfile):
-        format = ''.join(['f' for i in range(0, len(self.power_levels[0]))])
-        assert(len(format) == len(self.power_levels[0]))
-        for levels in self.power_levels:
-            packed = struct.pack(format, *levels)
-            outfile.write(packed)
+            print >>outfile, "%.6f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d" % levels
 
     def populate_from_data(self, data_lines):
         """Populate this object from a list of lines of data messages"""
@@ -175,21 +163,6 @@ class EegData(object):
         self.print_power_levels_tsv(levels)
         levels.close()
 
-    def to_binary_files(self, enclosing_folder):
-        """Convert this object's fields to several binary files in the
-           enclosing folder"""
-        # Save raw eeg
-        raw_eeg_filename = os.path.join(enclosing_folder, EegData.RAW_EEG_BIN)
-        raw_eeg = open(raw_eeg_filename, 'w')
-        self.write_raw_eeg_binary(raw_eeg)
-        raw_eeg.close()
-        # Save power levels
-        levels_filename = os.path.join(enclosing_folder,
-                                       EegData.POWER_LEVELS_BIN)
-        levels = open(levels_filename, 'w')
-        self.write_power_levels_binary(levels)
-        levels.close()
-
 
 ################################################################################
 # Synaptic server data processing
@@ -201,12 +174,10 @@ def get_data_for_n_seconds(seconds):
        and return it as a single string"""
     end_time = time.time() + seconds
     s = socket.create_connection(("localhost", 13854))
-    #f = s.makefile()
     chunks = []
     while time.time() < end_time:
         chunks.append(s.recv(CHUNK_MAX_SIZE))
-    #f.close()
-    s.shutdown(socket.SHUT_RDWR)
+    #s.shutdown(socket.SHUT_RDWR)
     s.close()
     return ''.join(chunks)
 
@@ -249,7 +220,6 @@ def capture_emotion(person_name, emotion, duration):
             person_emotion_path = os.path.join(person_name, emotion)
             os.mkdir(person_emotion_path)
             eeg_data.to_tsv_files(person_emotion_path)
-            eeg_data.to_binary_files(person_emotion_path)
             break
         else:
             print "Trying again..."
