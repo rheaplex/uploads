@@ -18,6 +18,15 @@
 
 
 ################################################################################
+# Notes
+################################################################################
+
+# Make sure you have pybluez and PyQt4 installed when using the Synaptic server
+#  as Synaptic won't run otherwise, and will silently fail
+# Test it: python /usr/lib/python2.*/site-packages/Puzzlebox/Synapse/Interface.py
+
+
+################################################################################
 # Imports
 ################################################################################
 
@@ -192,10 +201,12 @@ def get_data_for_n_seconds(seconds):
        and return it as a single string"""
     end_time = time.time() + seconds
     s = socket.create_connection(("localhost", 13854))
-    f = s.makefile()
+    #f = s.makefile()
     chunks = []
     while time.time() < end_time:
         chunks.append(s.recv(CHUNK_MAX_SIZE))
+    #f.close()
+    s.shutdown(socket.SHUT_RDWR)
     s.close()
     return ''.join(chunks)
 
@@ -212,7 +223,7 @@ def split_data(output):
 def eeg_data_from_n_seconds_data(seconds):
     """Capture n seconds data from the Synapse server and return as an
        EegData object"""
-    raw_data = get_data_for_n_seconds(2)
+    raw_data = get_data_for_n_seconds(seconds)
     data_lines = split_data(raw_data)
     eeg_data = EegData()
     eeg_data.populate_from_data(data_lines)
@@ -248,6 +259,7 @@ def capture_emotions(person_name, emotions, duration):
     """Capture each emotion in turn"""
     print """I am going to prompt you to pretend to feel the following emotions for %s seconds each: %s""" % (duration, ', '.join(emotions))
     for emotion in emotions:
+        if not os.path.exists(os.path.join(person_name, emotion)):
             capture_emotion(person_name, emotion, duration)
 
 
@@ -268,8 +280,7 @@ def main():
         usage()
     person_name = sys.argv[1]
     if os.path.exists(person_name):
-        print "Folder of emotions for %s already exists. Exiting." % person_name
-        sys.exit(1)
+        print "Folder for %s exists. Adding any missing emotions." % person_name
     else:
         os.mkdir(person_name)
     capture_emotions(person_name, EMOTIONS, SECONDS_TO_CAPTURE_EMOTION_FOR)
