@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    twitter_streaming_search - Scan Twitter for mentions of emotions
+//    load_emotion_eeg - load serialized eeg data
 //    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -36,6 +36,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <cassert>
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <stdexcept>
@@ -43,56 +46,44 @@
 #include <vector>
 
 #include <boost/foreach.hpp>
-
-////////////////////////////////////////////////////////////////////////////////
-// File slurping
-////////////////////////////////////////////////////////////////////////////////
-
-// Slurp a file into a byte buffer in memory
-
-template<class T>
-void slurp(const std::string & filename, T *& buffer,
-	   unsigned int & count)
-{
-  int filenum = ::open(filename.c_str(), O_RDONLY);
-  if(filenum == -1)
-    throw std::runtime_error("No such file");
-  struct stat stat_details;
-  int status = ::fstat(filenum, &stat_details);
-  if(status == -1)
-    throw std::runtime_error("Couldn't stat file");
-  size_t buffer_size = stat_details.st_size;
-  count = buffer_size / sizeof(T);
-  buffer = new T[buffer_size];
-  int result = ::read(filenum, buffer, buffer_size);
-  if(result != buffer_size)
-    throw std::runtime_error("Didn't read entire file");
-}
+#include <boost/algorithm/string.hpp>
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Raw EEG data
 ////////////////////////////////////////////////////////////////////////////////
 
-enum raw_eeg_fields{RAW_EEG_TIMESTAMP_FIELD = 0,
-		    RAW_EEG_VALUE_FIELD,
-		    RAW_EEG_FIELD_COUNT};
+struct raw_eeg
+{
+  double timestamp;
+  int value;
+};
+
+typedef std::vector<raw_eeg> raw_eeg_vector;
 
 // slurp raw eeg data into a 1d array of floats, calculating the number of rows
 
-void slurp_raw_eeg(const std::string & file, float *& eeg,
-		   unsigned int & row_count)
+void slurp_raw_eeg(const std::string & file, raw_eeg_vector & eeg_vector)
 {
-  unsigned int floats_count;
-  slurp(file, eeg, floats_count);
-  row_count = floats_count / RAW_EEG_FIELD_COUNT;
-}
-
-// Get the start of a row of eeg data in a 1d array of floats
-
-static float * raw_eeg_row(float * buffer, unsigned int index)
-{
-  return buffer + (index * RAW_EEG_FIELD_COUNT);
+  std::ifstream source(file);
+  while(source)
+  {
+    std::string line;
+    std::getline(source, line);
+    // Skip comments
+    if(line.length() > 0 && line[0] == '#')
+      continue;
+    // We get an empty line at the end???
+    if(line.length() == 0)
+      break;
+    std::vector<std::string> fields;
+    boost::split(fields, line, boost::is_any_of("\t"));
+    raw_eeg eeg = {
+      ::atof(fields[0].c_str()), ::atoi(fields[1].c_str())
+    };
+    assert(eeg.timestamp != 0.0);
+    eeg_vector.push_back(eeg);				      
+  }
 }
 
 
@@ -100,34 +91,52 @@ static float * raw_eeg_row(float * buffer, unsigned int index)
 // Power Levels
 ////////////////////////////////////////////////////////////////////////////////
 
-enum power_level_fields{POWER_LEVELS_TIMESTAMP_FIELD = 0,
-			POWER_LEVELS_POOR_SIGNAL_LEVEL,
-			POWER_LEVELS_LOW_ALPHA,
-			POWER_LEVELS_HIGH_ALPHA,
-			POWER_LEVELS_LOW_BETA,
-			POWER_LEVELS_HIGH_BETA,
-			POWER_LEVELS_LOW_GAMMA,
-			POWER_LEVELS_HIGH_GAMMA,
-			POWER_LEVELS_ATTENTION,
-			POWER_LEVELS_MEDITATION,
-			POWER_LEVELS_FIELD_COUNT};
+struct power_levels
+{
+  double timestamp;
+  int poor_signal_level;
+  int low_alpha;
+  int high_alpha;
+  int low_beta;
+  int high_beta;
+  int low_gamma;
+  int high_gamma;
+  int attention;
+  int meditation;
+};
+
+typedef std::vector<power_levels> power_levels_vector;
 
 // slurp raw power_levels into 1d array of floats, calculating number of rows
 
-void slurp_power_levels(const std::string & file, float *& eeg,
-			unsigned int & row_count)
+void slurp_power_levels(const std::string & file,
+			power_levels_vector & levels_vector)
 {
-  unsigned int floats_count;
-  slurp(file, eeg, floats_count);
-  row_count = floats_count / POWER_LEVELS_FIELD_COUNT;
+  std::ifstream source(file);
+  while(source)
+  {
+    std::string line;
+    std::getline(source, line);
+    // Skip comments
+    if(line.length() > 0 && line[0] == '#')
+      continue;
+    // We get an empty line at the end???
+    if(line.length() == 0)
+      break;
+    std::vector<std::string> fields;
+    boost::split(fields, line, boost::is_any_of("\t"));
+    power_levels levels = {
+      ::atof(fields[0].c_str()), ::atoi(fields[1].c_str()), 
+      ::atoi(fields[2].c_str()), ::atoi(fields[4].c_str()),
+      ::atoi(fields[4].c_str()), ::atoi(fields[5].c_str()),
+      ::atoi(fields[6].c_str()), ::atoi(fields[7].c_str()),
+      ::atoi(fields[8].c_str()), ::atoi(fields[9].c_str())
+    };
+    assert(levels.timestamp != 0.0);
+    levels_vector.push_back(levels);				      
+  }
 }
 
-// Get the start of a row of power levels in a 1d array of floats
-
-static float * power_levels_row(float * buffer, unsigned int index)
-{
-  return buffer + (index * POWER_LEVELS_FIELD_COUNT);
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,8 +153,8 @@ const std::vector<std::string> emotions = {"wonder", "love", "hatred", "desire",
 
 // The names of the files for each emotion
 
-const std::string RAW_EEG_FILENAME("raw_eeg.bin");
-const std::string POWER_LEVELS_FILENAME("power_levels.bin");
+const std::string RAW_EEG_FILENAME("raw_eeg.txt");
+const std::string POWER_LEVELS_FILENAME("power_levels.txt");
 
 // Make the path to the relevant file for the relevant emotion for the user
 
@@ -160,32 +169,28 @@ std::string emotion_file(const std::string & user_name,
 
 void load_emotion_raw_eeg_data(const std::string & user_name,
 			       const std::string & emotion,
-			       float *& raw_eeg,
-			       unsigned int & raw_eeg_rows)
+			       raw_eeg_vector & eeg_vector)
 {
   slurp_raw_eeg(emotion_file(user_name, emotion, RAW_EEG_FILENAME),
-		raw_eeg, raw_eeg_rows);
+		eeg_vector);
 }
 
 // Load the power levels data file for the emotion for the user
 
 void load_emotion_power_levels_data(const std::string & user_name,
 				    const std::string & emotion,
-				    float *& power_levels,
-				    unsigned int & power_levels_rows)
+				    power_levels_vector & levels_vector)
 {
   slurp_power_levels(emotion_file(user_name, emotion, POWER_LEVELS_FILENAME),
-		     power_levels, power_levels_rows);
+		     levels_vector);
 }
 
 // The data for an emotion
 
 struct emotion_data
 {
-  float * raw_eeg_data;
-  unsigned int raw_eeg_data_rows;
-  float * power_levels;
-  unsigned int power_levels_rows;
+  raw_eeg_vector raw_eeg;
+  power_levels_vector power_levels;
 };
 
 // A map of emotion names to emotion data objects
@@ -199,10 +204,8 @@ void load_emotions(emotion_data_map & emotion_map, const std::string & username)
   BOOST_FOREACH(const std::string & emotion, emotions)
   {
     emotion_data data;
-    load_emotion_power_levels_data(username, emotion, data.power_levels,
-				   data.power_levels_rows);
-    load_emotion_raw_eeg_data(username, emotion, data.raw_eeg_data,
-			      data.raw_eeg_data_rows);
+    load_emotion_power_levels_data(username, emotion, data.power_levels);
+    load_emotion_raw_eeg_data(username, emotion, data.raw_eeg);
     emotion_map[emotion] = data;
   }
 }
@@ -226,6 +229,8 @@ void check_args(const int argc, const char * argv[])
 
 // Do everything
 
+#include <cstdio>
+
 int main(int argc, const char * argv[])
 {
   check_args(argc, argv);
@@ -234,15 +239,11 @@ int main(int argc, const char * argv[])
   load_emotions(emotion_datas, name);
   emotion_data & emo = emotion_datas[emotions[0]];
   std::cout << emotions[0] << std::endl;
+  power_levels_vector & levels = emo.power_levels;
   for(int i = 0; i < 2; i++)
   {
-    float * row = power_levels_row(emo.power_levels, i);
-    for(int j = 0; j < POWER_LEVELS_FIELD_COUNT; j++)
-    {
-      std::cout << std::fixed << row[j];
-      std::cout << " ";
-    }
-    std::cout << std::endl;
+    std::cout << std::fixed << levels[i].timestamp << " " 
+	      << levels[i].low_gamma << std::endl;
   }
   return 0;
 }
