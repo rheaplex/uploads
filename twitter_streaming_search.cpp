@@ -48,11 +48,11 @@
 
 // Ekman's basic emotions
 
-const std::vector<std::string> emotions = {"anger", "disgust", "fear", "happiness", "sadness", "surprise"};
+//const std::vector<std::string> emotions = {"anger", "disgust", "fear", "happiness", "sadness", "surprise"};
 
 // Descartes' basic emotions
 
-//const std::vector<std::string> emotions = {"wonder", "love", "hatred", "desire", "joy", "sadness"};
+const std::vector<std::string> emotions = {"wonder", "love", "hatred", "desire", "joy", "sadness"};
 
 
 ////////////////////////////////////////////////////////////////////////////////
