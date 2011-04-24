@@ -35,10 +35,10 @@ import time
 ################################################################################
 
 # How many seconds of data to capture each emotion for
-SECONDS_TO_CAPTURE_EMOTION_FOR = 5
+SECONDS_TO_CAPTURE_EMOTION_FOR = 10
 
 # The delay before reading emotion data
-SECONDS_TO_WAIT_BEFORE_CAPTURING = 0
+SECONDS_TO_WAIT_BEFORE_CAPTURING = 2
 
 # The emotions to capture. For more information, see:
 # http://en.wikipedia.org/wiki/Emotion_classification#Basic_and_Complex_Emotions
@@ -227,12 +227,12 @@ def eeg_data_from_n_seconds_data(seconds):
 def capture_emotion(person_name, emotion, duration):
     """Capture the emotion to tsv files in person_name/emotion"""
     while True:
-        print "OK, I am going to start capturing data in %s seconds" % \
-            SECONDS_TO_WAIT_BEFORE_CAPTURING
         print "Please start [pretending that you are] feeling %s" % emotion
+        print "I am going to start capturing data in %s seconds" % \
+            SECONDS_TO_WAIT_BEFORE_CAPTURING
         time.sleep(SECONDS_TO_WAIT_BEFORE_CAPTURING)
         eeg_data = eeg_data_from_n_seconds_data(duration)
-        print "Done. Do you feel that was a good one? [y/n]"
+        print "Done. Did you manage to hold the feeling the entire time? [y/n]"
         if raw_input().lower().strip() in ["y", "yes"]:
             print "Saving to file..."
             person_emotion_path = os.path.join(person_name, emotion)
