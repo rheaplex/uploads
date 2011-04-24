@@ -25,3 +25,8 @@ The Project
 "Uploads" uses [consumer EEG headset equipment](http://store.neurosky.com/products/mindwave-1) to digitize the least possible record of the state of the human brain in different emotional states (chosen from [Descartes' emotional categories](https://secure.wikimedia.org/wikipedia/en/wiki/Emotion_classification#Basic_and_Complex_Emotions)). It is emotion that makes us human, after all. A physical expression of emotion is digitized using the [Kinect](http://www.xbox.com/kinect). The brainwave and facial states are rendered in software in response to the emotional environment of [Twitter](https://twitter.com/). Using consumer-grade equipment ties the project to Maker culture and kitchen table Transhumanism.
 
 I expect this project to be misunderstood in two ways, both failures of irony. Firstly as a demonstration that uploading is practical in a limited way now so its full imagined form will be possible soon. Secondly as an unreflective embodiment of that claim. This is in itself part of the work, which is art by virtue of being a reflexive intervention in perception.
+
+Dedication
+----------
+
+This project is dedicated to the memory of Internet VR pioneer Evie Matthieson.
