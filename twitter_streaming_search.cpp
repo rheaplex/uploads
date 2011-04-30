@@ -185,6 +185,9 @@ int main(const int argc, const char * argv[])
     curl_easy_setopt(curl, CURLOPT_URL, request.c_str());
     curl_easy_setopt(curl, CURLOPT_USERPWD, user_pass);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback_fun);
+    // Enable keep alive
+    curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 0);
+    curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 0);
     emotion_map map = build_emotion_map();
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &map);
     CURLcode result = curl_easy_perform(curl);
