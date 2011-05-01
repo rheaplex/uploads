@@ -226,6 +226,7 @@ void load_emotion_power_levels_data(const std::string & user_name,
 
 struct emotion_data
 {
+  std::string name;
   raw_eeg_vector raw_eeg;
   power_levels_vector power_levels;
   double max_levels_time;
@@ -242,13 +243,15 @@ void load_emotions(emotion_data_map & emotion_map, const std::string & username)
   BOOST_FOREACH(const std::string & emotion, emotions)
   {
     emotion_data data;
+    data.name = emotion;
     load_emotion_power_levels_data(username, emotion, data.power_levels);
     load_emotion_raw_eeg_data(username, emotion, data.raw_eeg);
     // Ensure power levels and raw eeg data have the same range
     truncate_eeg_to_levels_timestamps(data.raw_eeg, data.power_levels);
     // Then make the timestamps on each relative to the first timestamp
-    normalize_timestamps(data.power_levels, data.power_levels[0].timestamp);
-    normalize_timestamps(data.raw_eeg, data.power_levels[0].timestamp);
+    double relative_to = data.power_levels[0].timestamp;
+    normalize_timestamps(data.power_levels, relative_to);
+    normalize_timestamps(data.raw_eeg, relative_to);
     data.max_levels_time = data.power_levels.back().timestamp;
     emotion_map[emotion] = data;
   }
@@ -271,6 +274,10 @@ static const unsigned int eeg_to_display = 200;
 emotion_data_map emotion_datas;
 
 // VARIABLES
+
+// The current time, mostly for debugging
+
+double last_update_at = 0.0;
 
 // The current emotion, from Twitter
 
@@ -332,18 +339,19 @@ double current_time(emotion_data & data)
 {
   timeval tv;
   ::gettimeofday(&tv, NULL);
-  return std::fmod(tv.tv_sec, data.max_levels_time);
+  return std::fmod(tv.tv_sec + (tv.tv_usec/1000000.0), data.max_levels_time);
 }
 
 // set the current emotion name and data
 //  and create the initial iterators
 // this must be done after we get the first update from Twitter
 
-void initialize_state(std::string & emotion)
+void initialize_state(const std::string & emotion)
 {
   current_emotion_name = emotion;
   current_emotion_data = emotion_datas[emotion];
   double now = current_time(current_emotion_data);
+  last_update_at = now;
   current_eeg_iterator =
     set_current_iterator(now, current_emotion_data.raw_eeg);
   current_levels_iterator =
@@ -358,6 +366,7 @@ void initialize_state(std::string & emotion)
 double update_display_data()
 {
   double now = current_time(current_emotion_data);
+  last_update_at = now;
   // Push new data
   update_data_vector(now, current_emotion_data.raw_eeg, eeg_display_data,
 		     current_eeg_iterator);
@@ -369,6 +378,65 @@ double update_display_data()
 				      levels_to_display));
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Testing, debugging, etc.
+////////////////////////////////////////////////////////////////////////////////
+
+// print a *bit* of information about the emotion
+
+void print_emotion(const emotion_data & emo)
+{
+  std::cerr << emo.name << std::endl;
+  const power_levels_vector & levels = emo.power_levels;
+  std::cerr << "eeg start/end:" << std::endl;
+  const raw_eeg estart = emo.raw_eeg.front(); 
+  const raw_eeg eend = emo.raw_eeg.back(); 
+  std::cerr << std::fixed << estart.timestamp << " " 
+	      << estart.value << std::endl;
+  std::cerr << std::fixed << eend.timestamp << " " 
+	      << eend.value << std::endl;
+  std::cerr << "levels start/end:" << std::endl;
+  power_levels lstart = emo.power_levels.front(); 
+  power_levels lend = emo.power_levels.back(); 
+  std::cerr << std::fixed << lstart.timestamp << " " 
+	      << lstart.low_gamma << std::endl;
+  std::cerr << std::fixed << lend.timestamp << " " 
+	      << lend.low_gamma << std::endl;
+}
+
+// print the current global state
+
+void print_current_state()
+{
+  std::cerr << "Now: " << last_update_at << std::endl;
+  std::cerr << current_emotion_name 
+	    << ": "
+	    << current_emotion_data.name
+	    << std::endl;
+  std::cerr << "eeg iterator timestamp: " << (*current_eeg_iterator).timestamp
+	    << std::endl;
+  std::cerr << "level iterator timestamp: " 
+	    << (*current_levels_iterator).timestamp
+	    << std::endl;
+  /*std::cerr << (*current_levels_iterator)  << " "
+  << (*current_levels_iterator).timestamp << std::endl;*/
+// And show some of the display data...
+}
+
+void data_test()
+{
+  emotion_data & emo = emotion_datas["love"];
+  print_emotion(emo);
+  initialize_state("love");
+  print_current_state();
+  for(int i = 0; i < 50; i++)
+  {
+    ::usleep(250000);
+    update_display_data();
+    print_current_state();
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Main flow of control
@@ -395,13 +463,6 @@ int main(int argc, const char * argv[])
   check_args(argc, argv);
   const char * name = argv[1];
   load_emotions(emotion_datas, name);
-  emotion_data & emo = emotion_datas[emotions[0]];
-  std::cout << emotions[0] << std::endl;
-  power_levels_vector & levels = emo.power_levels;
-  for(int i = 0; i < 2; i++)
-  {
-    std::cout << std::fixed << levels[i].timestamp << " " 
-	      << levels[i].low_gamma << std::endl;
-  }
+  data_test();
   return 0;
 }
