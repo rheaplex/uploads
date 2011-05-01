@@ -312,25 +312,37 @@ typename T::iterator set_current_iterator(float current_time_mod, T & source)
 // This wraps round carefully
 
 template<class T, class U>
-void update_data_vector(double now_mod, 
+void update_data_vector(double now_mod,
+			double previous_mod,
 			T & source,
 			U & destination,
 			typename T::iterator & iter)
 {
   typename T::iterator end = source.end();
-  while(true)
+  // if we've wrapped round
+  // in pathalogical cases of system delay we will miss multiple passes
+  //  if that happens there are probably worse things to worry about
+  //  and the code won't fail, it
+  if(now_mod < previous_mod)
   {
-    // Wrap around
-    if(iter == end)
-      iter = source.begin();
-    // Loop exit test
-    // This and the wrap around amount to while timestamp <= now_mod
-    if((*iter).timestamp > now_mod)
-      break;
+    // push the remaining values
+    for(; iter != end; ++iter)
+    {
+      destination.push_front(*iter);
+    }
+    // and wrap round
+    iter = source.begin();
+  }
+  // whether we looped or not, keep pushing values until we hit the current time
+  while((*iter).timestamp <= now_mod)
+  {
+    // push the new value
     destination.push_front(*iter);
     // Move on to the next data item
     ++iter;
   }
+  // Note that the iterator is now pointing to the next item,
+  //  which means it will be at a time *after* the current time
 }
 
 // Get the current time in the range 0..max_timestamp
@@ -366,16 +378,18 @@ void initialize_state(const std::string & emotion)
 double update_display_data()
 {
   double now = current_time(current_emotion_data);
-  last_update_at = now;
   // Push new data
-  update_data_vector(now, current_emotion_data.raw_eeg, eeg_display_data,
+  update_data_vector(now, last_update_at,
+		     current_emotion_data.raw_eeg, eeg_display_data,
 		     current_eeg_iterator);
-  update_data_vector(now, current_emotion_data.power_levels,
+  update_data_vector(now, last_update_at,
+		     current_emotion_data.power_levels,
 		     levels_display_data, current_levels_iterator);
   // Truncate old data
   eeg_display_data.resize(std::min(eeg_display_data.size(), eeg_to_display));
   levels_display_data.resize(std::min(levels_display_data.size(),
 				      levels_to_display));
+  last_update_at = now;
 }
 
 
@@ -419,9 +433,20 @@ void print_current_state()
   std::cerr << "level iterator timestamp: " 
 	    << (*current_levels_iterator).timestamp
 	    << std::endl;
-  /*std::cerr << (*current_levels_iterator)  << " "
-  << (*current_levels_iterator).timestamp << std::endl;*/
-// And show some of the display data...
+  std::cerr << "levels data (len " << levels_display_data.size() << ")" 
+	    << std::endl;
+  for(int i = 0; i < std::min(5, (int)levels_display_data.size()); i++)
+    std::cerr << levels_display_data[i].timestamp << ": "
+	      << levels_display_data[i].low_gamma << " ";
+  if(! levels_display_data.empty())
+    std::cerr << std::endl;
+  std::cerr << "eeg data (len " << eeg_display_data.size() << ")" 
+	    << std::endl;
+  for(int i = 0; i < std::min(5, (int)eeg_display_data.size()); i++)
+    std::cerr << eeg_display_data[i].timestamp << ": "
+	      << eeg_display_data[i].value << " ";
+  if(! eeg_display_data.empty())
+    std::cerr << std::endl;
 }
 
 void data_test()
