@@ -3,7 +3,7 @@
 
 #include <string>
 
-void start_twitter_search(char * userpass);
+void start_twitter_search(const std::string & userpass);
 
 void reset_twitter_emotion_map();
 

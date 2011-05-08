@@ -97,7 +97,7 @@ typedef std::map<std::string, unsigned int> emotion_map;
 
 std::string current_emotion;
 
-// The emotion map. So we can reset it
+// The one true emotion map
 
 emotion_map twitter_emotion_map;
 
@@ -113,7 +113,7 @@ emotion_map build_emotion_map()
   return map;
 }
 
-// reset the main emotion map
+// Reset the main emotion map
 
 void reset_twitter_emotion_map()
 {
@@ -216,17 +216,19 @@ void * run_streaming_search(void * user_pass)
     twitter_emotion_map = build_emotion_map();
     ::curl_easy_setopt(curl, CURLOPT_WRITEDATA, &twitter_emotion_map);
     CURLcode result = ::curl_easy_perform(curl);
-    std::cerr << result << std::endl;
+    std::cerr << "curl_easy_perform: "<< result << std::endl;
     ::curl_easy_cleanup(curl);
     ::curl_global_cleanup();
   }
   ::pthread_exit(0);
 }
 
-void start_twitter_search(char * userpass)
+void start_twitter_search(const std::string & userpass)
 {
-  int result = ::pthread_create(&twitter_streaming_thread, NULL,
-				run_streaming_search, userpass);
+  int result = ::pthread_create(&twitter_streaming_thread,
+				NULL,
+				run_streaming_search,
+				const_cast<char *>(userpass.c_str()));
   if(result != 0)
   {
     std::cerr << "Nonzero result from pthread_create: " << result << std::endl;

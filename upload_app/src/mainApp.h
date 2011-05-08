@@ -2,11 +2,15 @@
 #define _MAIN_APP
 
 #include "ofMain.h"
+#include "ofxArgs.h"
 
 class mainApp : public ofBaseApp{
+	private:
+		ofxArgs* args;
+
 	
 	public:
-		
+                mainApp(ofxArgs* args);
 		void setup();
 		void update();
 		void draw();

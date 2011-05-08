@@ -1,14 +1,29 @@
+#include "stdlib.h"
+
 #include "twitterStreaming.h"
 
 #include "mainApp.h"
 
 
+mainApp::mainApp(ofxArgs* args){
+       this->args = args;
+}
+
+
 //--------------------------------------------------------------
 void mainApp::setup(){
-	ofSetWindowTitle("upload");
-	ofSetFrameRate(60);
+  std::string twitter_userpass;
+  if(this->args->contains("-twitter")){
+    twitter_userpass = this->args->getString("-twitter");
+  }else{
+    std::cerr << "Please specify -twitter username:password" << std::endl;
+    ::exit(-1);
+  }
 
-	start_twitter_search("");
+  ofSetWindowTitle("upload");
+  ofSetFrameRate(60);
+  
+  start_twitter_search(twitter_userpass);
 }
 
 //--------------------------------------------------------------
