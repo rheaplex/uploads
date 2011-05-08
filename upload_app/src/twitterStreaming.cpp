@@ -18,14 +18,6 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Notes
-////////////////////////////////////////////////////////////////////////////////
-
-// We use c++0x, which needs specifying:
-// g++ -std=c++0x -lcurl -o twtstream twitter_streaming_search.cpp
-
-
-////////////////////////////////////////////////////////////////////////////////
 // includes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,10 +28,15 @@
 #include <string>
 #include <vector>
 
+#include <stdlib.h>
+
+#include <curl/curl.h>
+#include <pthread.h>
+
 #include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
 
-#include <curl/curl.h>
+#include "twitterStreaming.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,6 +92,15 @@ std::string build_streaming_request()
 
 typedef std::map<std::string, unsigned int> emotion_map;
 
+// The emotion with the higest count. Pointer to make write atomic
+// NOTE: Non-atomic, written to by one thread, read by another, probably bad
+
+std::string current_emotion;
+
+// The emotion map. So we can reset it
+
+emotion_map twitter_emotion_map;
+
 // Create an emotion map based on the list of emotions we are using
 
 emotion_map build_emotion_map()
@@ -105,6 +111,18 @@ emotion_map build_emotion_map()
     map[emotion] = 0;
   }
   return map;
+}
+
+// reset the main emotion map
+
+void reset_twitter_emotion_map()
+{
+  for(emotion_map::iterator i = twitter_emotion_map.begin();
+      i != twitter_emotion_map.end();
+      ++i)
+  {
+    (*i).second = 0;
+  }
 }
 
 // Scan the data for mention of emotions
@@ -135,6 +153,22 @@ void dump_emotion_map(std::ostream & stream, emotion_map & emomap)
   stream << std::endl;
 }
 
+// Get the highest emotion count name
+
+void highest_emotion_count(emotion_map & emomap, std::string & emotion)
+{
+  int max_count = -1;
+  std::string max_name;
+  for(emotion_map::iterator i = emomap.begin(); i != emomap.end(); ++i)
+  {
+    if(static_cast<int>((*i).second) > max_count)
+    {
+      max_name = (*i).first; 
+      max_count = (*i).second;
+    }
+  }
+  emotion = max_name;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Twitter streaming search result processing
@@ -150,6 +184,7 @@ size_t curl_callback_fun(void * ptr, size_t size, size_t nmemb, void * userdata)
   emotion_map & emomap = *reinterpret_cast<emotion_map *>(userdata);
   increment_emotions(emomap, data);
   dump_emotion_map(std::cout, emomap);
+  highest_emotion_count(emomap, current_emotion);
   return data_length;
 }
 
@@ -158,42 +193,43 @@ size_t curl_callback_fun(void * ptr, size_t size, size_t nmemb, void * userdata)
 // Main flow of control
 ////////////////////////////////////////////////////////////////////////////////
 
-// Until we get a command line option processor done, just check simply
+// The curl thread
 
-void check_args(const int argc, const char * argv[])
-{
-  if(argc != 2)
-  {
-    std::cerr << "USAGE: Pass Twitter username:password as first argument"
-	      << std::endl;
-    std::exit(1);
-  }
-}
+pthread_t twitter_streaming_thread;
 
 // Do everything
 
-int main(const int argc, const char * argv[])
+void * run_streaming_search(void * user_pass)
 {
-  check_args(argc, argv);
-  const char * user_pass = argv[1];
-  curl_global_init(CURL_GLOBAL_ALL);
-  CURL * curl = curl_easy_init();
+  ::curl_global_init(CURL_GLOBAL_ALL);
+  CURL * curl = ::curl_easy_init();
   if(curl)
   {
     std::string request = build_streaming_request();
     std::cout << request << std::endl;
-    curl_easy_setopt(curl, CURLOPT_URL, request.c_str());
-    curl_easy_setopt(curl, CURLOPT_USERPWD, user_pass);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback_fun);
+    ::curl_easy_setopt(curl, CURLOPT_URL, request.c_str());
+    ::curl_easy_setopt(curl, CURLOPT_USERPWD, static_cast<char*>(user_pass));
+    ::curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback_fun);
     // Enable keep alive
-    curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 0);
-    curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 0);
-    emotion_map map = build_emotion_map();
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &map);
-    CURLcode result = curl_easy_perform(curl);
+    ::curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 0);
+    ::curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 0);
+    twitter_emotion_map = build_emotion_map();
+    ::curl_easy_setopt(curl, CURLOPT_WRITEDATA, &twitter_emotion_map);
+    CURLcode result = ::curl_easy_perform(curl);
     std::cerr << result << std::endl;
-    curl_easy_cleanup(curl);
-    curl_global_cleanup();
+    ::curl_easy_cleanup(curl);
+    ::curl_global_cleanup();
   }
-  return 0;
+  ::pthread_exit(0);
+}
+
+void start_twitter_search(char * userpass)
+{
+  int result = ::pthread_create(&twitter_streaming_thread, NULL,
+				run_streaming_search, userpass);
+  if(result != 0)
+  {
+    std::cerr << "Nonzero result from pthread_create: " << result << std::endl;
+    ::exit(-1);
+  }
 }
