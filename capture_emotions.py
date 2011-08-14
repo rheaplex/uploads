@@ -21,6 +21,7 @@
 # Notes
 ################################################################################
 
+
 # Make sure you have pybluez and PyQt4 installed when using the Synaptic server
 #  as Synaptic won't run otherwise, and will silently fail
 # Test it: python /usr/lib/python2.*/site-packages/Puzzlebox/Synapse/Interface.py
@@ -38,22 +39,19 @@ import struct
 import sys
 import time
 
+from emotions import EMOTIONS
+
 
 ################################################################################
 # Configuration
 ################################################################################
+
 
 # How many seconds of data to capture each emotion for
 SECONDS_TO_CAPTURE_EMOTION_FOR = 10
 
 # The delay before reading emotion data
 SECONDS_TO_WAIT_BEFORE_CAPTURING = 2
-
-# The emotions to capture. For more information, see:
-# http://en.wikipedia.org/wiki/Emotion_classification#Basic_and_Complex_Emotions
-EKMAN = ["anger", "disgust", "fear", "happiness", "sadness", "surprise"]
-DESCARTES = ["wonder", "love", "hatred", "desire", "joy", "sadness"]
-EMOTIONS = DESCARTES
 
 # The amount of data to read each time from the Synaptic server
 CHUNK_MAX_SIZE = 256
