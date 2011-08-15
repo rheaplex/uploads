@@ -21,6 +21,7 @@
 # Imports
 ################################################################################
 
+import cv
 import glob
 import gzip
 import os
@@ -99,6 +100,11 @@ class KinectFrame(object):
             print >>xyz_out, "%f\t%f\t%f" % (sample[0], sample[1], sample[2])
         xyz_out.close()
 
+    def displayFrame(self):
+        # Just show the rgb data for speed
+        cv.ShowImage('both', numpy.array(self.rgb[::2,::2,::-1]))
+        cv.WaitKey(5)
+
 
 def handleKinect(frames, last_frame_time, now):
     """If it's time to grab a new frame, grab and save it"""
@@ -108,7 +114,9 @@ def handleKinect(frames, last_frame_time, now):
         frame.getFrame()
         frames.append(frame)
         new_time = now
+        frame.displayFrame()
     return new_time
+
 
 def dumpFrames(frames, folder):
     for frame in frames:
