@@ -36,20 +36,9 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
 
+#include "emotion.h"
+
 #include "twitterStreaming.h"
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Emotions
-////////////////////////////////////////////////////////////////////////////////
-
-// Ekman's basic emotions
-
-//const std::vector<std::string> emotions = {"anger", "disgust", "fear", "happiness", "sadness", "surprise"};
-
-// Descartes' basic emotions
-
-const std::vector<std::string> emotions = {"wonder", "love", "hatred", "desire", "joy", "sadness"};
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,11 +81,6 @@ std::string build_streaming_request()
 
 typedef std::map<std::string, unsigned int> emotion_map;
 
-// The emotion with the higest count. Pointer to make write atomic
-// NOTE: Non-atomic, written to by one thread, read by another, probably bad
-
-std::string current_emotion;
-
 // The one true emotion map
 
 emotion_map twitter_emotion_map;
@@ -121,7 +105,7 @@ void reset_twitter_emotion_map()
       i != twitter_emotion_map.end();
       ++i)
   {
-    (*i).second = 0;
+    twitter_emotion_map[(*i).first] = 0;
   }
 }
 
@@ -154,6 +138,7 @@ void dump_emotion_map(std::ostream & stream, emotion_map & emomap)
 }
 
 // Get the highest emotion count name
+//FIXME: What about ties?
 
 void highest_emotion_count(emotion_map & emomap, std::string & emotion)
 {

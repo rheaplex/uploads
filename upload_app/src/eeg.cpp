@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    load_emotion_eeg - load serialized eeg data
+//    eeg - load serialized eeg data
 //    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -47,6 +47,10 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include "emotion.h"
+
+#include "eeg.h"
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Timestamps
@@ -65,27 +69,10 @@ void normalize_timestamps(T & values, double base)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Power Levels
+// EEG Power Levels
 ////////////////////////////////////////////////////////////////////////////////
 
-struct power_levels
-{  
-  double timestamp;
-  int poor_signal_level;
-  int low_alpha;
-  int high_alpha;
-  int low_beta;
-  int high_beta;
-  int low_gamma;
-  int high_gamma;
-  int attention;
-  int meditation;
-};
-
-typedef std::vector<power_levels> power_levels_vector;
-typedef power_levels_vector::iterator power_levels_iterator;
-
-// slurp raw power_levels into vector
+// Slurp power_levels from a tsv file into a vector
 
 void slurp_power_levels(const std::string & file,
 			power_levels_vector & levels_vector)
@@ -122,16 +109,7 @@ void slurp_power_levels(const std::string & file,
 // Raw EEG data
 ////////////////////////////////////////////////////////////////////////////////
 
-struct raw_eeg
-{
-  double timestamp;
-  int value;
-};
-
-typedef std::vector<raw_eeg> raw_eeg_vector;
-typedef raw_eeg_vector::iterator raw_eeg_iterator;
-
-// slurp raw eeg data into vector
+// Slurp raw eeg data from a tsv file into a vector
 
 void slurp_raw_eeg(const std::string & file, raw_eeg_vector & eeg_vector)
 {
@@ -158,7 +136,7 @@ void slurp_raw_eeg(const std::string & file, raw_eeg_vector & eeg_vector)
   }
 }
 
-// Truncate to same timestamp range as power levels
+// Truncate raw eeg samples (e) to same timestamp range as power levels (L)
 // so we should have: LeeeeeeeLeeeeeLeeeeeL
 
 void truncate_eeg_to_levels_timestamps(raw_eeg_vector & eeg, 
@@ -177,16 +155,8 @@ void truncate_eeg_to_levels_timestamps(raw_eeg_vector & eeg,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Emotion files
+// Eeg data for emotions
 ////////////////////////////////////////////////////////////////////////////////
-
-// Ekman's basic emotions
-
-//const std::vector<std::string> emotions = {"anger", "disgust", "fear", "happiness", "sadness", "surprise"};
-
-// Descartes' basic emotions
-
-const std::vector<std::string> emotions = {"wonder", "love", "hatred", "desire", "joy", "sadness"};
 
 // The names of the files in each emotion directory
 
@@ -222,23 +192,9 @@ void load_emotion_power_levels_data(const std::string & user_name,
 		     levels_vector);
 }
 
-// The data for an emotion
-
-struct emotion_data
-{
-  std::string name;
-  raw_eeg_vector raw_eeg;
-  power_levels_vector power_levels;
-  double max_levels_time;
-};
-
-// A map of emotion names to emotion data objects
-
-typedef std::map<std::string, emotion_data> emotion_data_map;
-
 // Load all the user's emotion data files from each emotion folder
 
-void load_emotions(emotion_data_map & emotion_map, const std::string & username)
+void load_emotions(const std::string & username)
 {
   BOOST_FOREACH(const std::string & emotion, emotions)
   {
@@ -253,7 +209,7 @@ void load_emotions(emotion_data_map & emotion_map, const std::string & username)
     normalize_timestamps(data.power_levels, relative_to);
     normalize_timestamps(data.raw_eeg, relative_to);
     data.max_levels_time = data.power_levels.back().timestamp;
-    emotion_map[emotion] = data;
+    emotion_datas[emotion] = data;
   }
 }
 
@@ -281,7 +237,6 @@ double last_update_at = 0.0;
 
 // The current emotion, from Twitter
 
-std::string current_emotion_name;
 emotion_data current_emotion_data;
 
 // The current positions in the current emotion's data
@@ -358,10 +313,9 @@ double current_time(emotion_data & data)
 //  and create the initial iterators
 // this must be done after we get the first update from Twitter
 
-void initialize_state(const std::string & emotion)
+void update_state()
 {
-  current_emotion_name = emotion;
-  current_emotion_data = emotion_datas[emotion];
+  current_emotion_data = emotion_datas[current_emotion];
   double now = current_time(current_emotion_data);
   last_update_at = now;
   current_eeg_iterator =
@@ -424,7 +378,7 @@ void print_emotion(const emotion_data & emo)
 void print_current_state()
 {
   std::cerr << "Now: " << last_update_at << std::endl;
-  std::cerr << current_emotion_name 
+  std::cerr << current_emotion 
 	    << ": "
 	    << current_emotion_data.name
 	    << std::endl;
@@ -453,7 +407,8 @@ void data_test()
 {
   emotion_data & emo = emotion_datas["love"];
   print_emotion(emo);
-  initialize_state("love");
+  current_emotion = "love";
+  update_state();
   print_current_state();
   for(int i = 0; i < 50; i++)
   {
@@ -461,33 +416,4 @@ void data_test()
     update_display_data();
     print_current_state();
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Main flow of control
-////////////////////////////////////////////////////////////////////////////////
-
-// Until we get a command line option processor done, just check simply
-
-void check_args(const int argc, const char * argv[])
-{
-  if(argc != 2)
-  {
-    std::cerr << "USAGE: pass user emotions folder path as first argument"
-	      << std::endl;
-    std::exit(1);
-  }
-}
-
-// Do everything
-
-#include <cstdio>
-
-int main(int argc, const char * argv[])
-{
-  check_args(argc, argv);
-  const char * name = argv[1];
-  load_emotions(emotion_datas, name);
-  data_test();
-  return 0;
 }

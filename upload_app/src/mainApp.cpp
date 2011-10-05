@@ -1,5 +1,7 @@
 #include "stdlib.h"
 
+#include "eeg.h"
+#include "expression.h"
 #include "twitterStreaming.h"
 
 #include "mainApp.h"
@@ -12,6 +14,14 @@ mainApp::mainApp(ofxArgs* args){
 
 //--------------------------------------------------------------
 void mainApp::setup(){
+  if(this->args->contains("-data")){
+    this->data_path = this->args->getString("-data");
+  }else{
+    std::cerr << "Please specify -data /path/to-data/directory" << std::endl;
+    ::exit(-1);
+  }
+  load_emotions(this->data_path);
+
   std::string twitter_userpass;
   if(this->args->contains("-twitter")){
     twitter_userpass = this->args->getString("-twitter");
@@ -22,7 +32,7 @@ void mainApp::setup(){
 
   ofSetWindowTitle("upload");
   ofSetFrameRate(60);
-  
+
   start_twitter_search(twitter_userpass);
 }
 
@@ -33,6 +43,7 @@ void mainApp::update(){
     reset_twitter_emotion_map();
     count = 0;
   }
+  
 }
 
 //--------------------------------------------------------------
