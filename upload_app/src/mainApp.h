@@ -1,13 +1,15 @@
 #ifndef _MAIN_APP
 #define _MAIN_APP
 
+#include <string>
+
 #include "ofMain.h"
 #include "ofxArgs.h"
 
 class mainApp : public ofBaseApp{
 	private:
 		ofxArgs* args;
-
+		std::string data_path;
 	
 	public:
                 mainApp(ofxArgs* args);
