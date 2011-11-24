@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    emotion.h - the list of emotion names
+//    layout.h - calculating the screen layout
 //    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -16,18 +16,16 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __EMOTIONS_H__
-#define __EMOTIONS_H__
+#ifndef __LAYOUT_H__
+#define __LAYOUT_H__
 
-#include <string>
-#include <vector>
+#include "ofPoint.h"
+#include "ofRectangle.h"
 
-// The emotion names, ready to iterate
-
-extern const std::vector<std::string> emotions;
-
-// The current emotion. Should be an int, but seems to behave itself
-
-extern std::string current_emotion;
+extern float label_size_small();
+extern float label_size_large();
+extern void calculate_face_bounds(ofRectangle & bounds);
+extern float eeg_padding_v();
+extern void calculate_eeg_bounds(int index, int count, ofRectangle & bounds);
 
 #endif

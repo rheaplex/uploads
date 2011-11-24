@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    emotion.h - the list of emotion names
+//    drawing.h - plotting the data
 //    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -16,18 +16,12 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __EMOTIONS_H__
-#define __EMOTIONS_H__
+#ifndef __DRAWING_H__
+#define __DRAWING_H__
 
-#include <string>
-#include <vector>
+void drawing_setup();
 
-// The emotion names, ready to iterate
-
-extern const std::vector<std::string> emotions;
-
-// The current emotion. Should be an int, but seems to behave itself
-
-extern std::string current_emotion;
+void draw_eegs();
+void draw_face();
 
 #endif

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    emotion.h - the list of emotion names
+//    layout_options.h - configure the layout
 //    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -16,18 +16,10 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __EMOTIONS_H__
-#define __EMOTIONS_H__
+#ifndef __LAYOUT_OPTIONS_H__
+#define __LAYOUT_OPTIONS_H__
 
-#include <string>
-#include <vector>
-
-// The emotion names, ready to iterate
-
-extern const std::vector<std::string> emotions;
-
-// The current emotion. Should be an int, but seems to behave itself
-
-extern std::string current_emotion;
+extern void layout_add_options(po::options_description & desc);
+extern void layout_initialize(const po::variables_map & vm);
 
 #endif
