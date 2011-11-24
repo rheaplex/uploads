@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    twitter_streaming_search - Scan Twitter for mentions of emotions
+//    twitter_streaming.cpp - twotter streaming search
 //    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -47,7 +47,8 @@
 
 // Location bounding boxes to check for tweets
 
-std::vector<std::string> locations = {"-122.75,36.8,-121.75,37.8", "-74,40,-73,41"};
+std::vector<std::string> locations = {"-122.75,36.8,-121.75,37.8",
+				      "-74,40,-73,41"};
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +58,7 @@ std::vector<std::string> locations = {"-122.75,36.8,-121.75,37.8", "-74,40,-73,4
 // The basic streaming request url, which we add parameters to
 
 const std::string streaming_request_base = 
-  "http://stream.twitter.com/1/statuses/filter.json";
+  "https://stream.twitter.com/1/statuses/filter.json";
 
 // Make the url string for the streaming request
 
@@ -168,7 +169,7 @@ size_t curl_callback_fun(void * ptr, size_t size, size_t nmemb, void * userdata)
   //std::cout << data << std::endl;
   emotion_map & emomap = *reinterpret_cast<emotion_map *>(userdata);
   increment_emotions(emomap, data);
-  dump_emotion_map(std::cout, emomap);
+  //dump_emotion_map(std::cout, emomap);
   highest_emotion_count(emomap, current_emotion);
   return data_length;
 }

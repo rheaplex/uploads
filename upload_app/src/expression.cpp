@@ -1,8 +1,27 @@
+////////////////////////////////////////////////////////////////////////////////
+//    expression.cpp - load serialized kinect frame data
+//    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
+//
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+////////////////////////////////////////////////////////////////////////////////
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -10,15 +29,19 @@
 #include <string>
 #include <vector>
 
-#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
+#include <boost/regex.hpp>
 #include <boost/tokenizer.hpp>
 
-#include <GL/GL.h>
-#include <GLU/GLU.h>
-
 #include <ofImage.h>
+
+#include <GL/gl.h>
+#include <GL/glu.h>
+
+#include "emotion.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,7 +53,7 @@ static const int TEXTURE_HEIGHT = 480;
 
 static const float MAX_ROTATION_DRIFT = 0.8f;
 
-static const GLclampf CLEAR_COLOUR[3] = {0, 0, 0};
+static const GLclampf CLEAR_COLOUR[4] = {0, 0, 0, 0};
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,70 +66,91 @@ void slurp_gzipped_lines(const std::string & path,
 			 std::vector<std::string> & lines)
 {
   std::ifstream file(path, ios_base::in | ios_base::binary);
-  filtering_streambuf<input> in;
-  in.push(gzip_decompressor());
+  boost::iostreams::filtering_stream<boost::iostreams::input> in;
+  in.push(boost::iostreams::gzip_decompressor());
   in.push(file);
   std::string line;
-  while(getline(in, line))
+  while(std::getline(in, line))
   {
     lines.push_back(line);
   }
 }
 
 // Load the values of a gzipped tsv file into an array of floats
-// Caller owns the new[] array
+// Caller owns the new[] float array
 
-float * slurp_gzipped_csv_floats(const std::string & path, int stride)
+size_t slurp_gzipped_csv_floats(float *& values, const std::string & path,
+				int stride)
 {
   std::vector<std::string> lines;
   slurp_gzipped_lines(path, lines);
-  float * values = new float[lines.size() * stride];
-  for(int i = 0; i < lines.size(); i++)
+  values = new float[lines.size() * stride];
+  for(size_t i = 0; i < lines.size(); i++)
   {
-    tokenizer<>::iterator tokens = tokenizer<>(lines[i])::begin();
+    boost::tokenizer<>::iterator tokens = 
+      boost::tokenizer<>(lines[i]).begin();
     int index = i * stride;
     for(int j = 0; j < stride; j++)
     {
-      values[index + j] = *tokens;
+      values[index + j] = std::atof((*tokens).c_str());
       tokens++;
     }
   }
+  return lines.size();
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Frames
 ////////////////////////////////////////////////////////////////////////////////
 
-struct Frame
+class Frame
 {
-  Frame();
+public:
+  Frame(const boost::filesystem::path & path_root, float when_base);
   ~Frame();
   void render(float rotation[3]);
 
-  ofImage rgb;
-  float * xyz;
-  float * uv
+public:
   float when;
+
+private:
+  float * xyz;
+  float * uv;
+  size_t num_coords;
+  ofTexture rgb;
 };
 
-Frame::Frame(const std::string & path_root, float when) :
-  when(when),
-  xyz(slurp_gzipped_csv_floats(path_root + ".xyz", 3)),
-  uv(slurp_gzipped_csv_floats(path_root + ".uv", 2))
+std::map<std::string, std::vector<Frame> > expression_frames;
+std::map<std::string, float> expression_ranges;
+
+// Load the frame from the path
+
+Frame::Frame(const boost::filesystem::path & path_root, float when_base)
 {
-  rgb.load(path_root + ".png");
+  // The path is of the format /a/b/c/2346.12
+  when = std::atof(path_root.filename().c_str()) - when_base;
+  num_coords = slurp_gzipped_csv_floats(xyz, path_root.string() + ".xyz", 3);
+  size_t other_num_coords = slurp_gzipped_csv_floats(xyz,
+						     path_root.string() + ".uv",
+						     2);
+  // Move this to a non-debug check
+  assert(num_coords == other_num_coords);
+  ofLoadImage(rgb, path_root.string() + ".png");
 }
 
 Frame::~Frame()
 {
-  if(rgb) delete[] rgb;
   if(xyz) delete[] xyz;
   if(uv) delete[] uv;
 }
 
+// Render the frame in the OpenGL context
+
 void Frame::render(float rotation[3])
 {
-  ::glClearColor(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2]);
+  ::glClearColor(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2],
+		 CLEAR_COLOUR[3]);
   ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   ::glEnable(GL_DEPTH_TEST);
 
@@ -129,18 +173,16 @@ void Frame::render(float rotation[3])
   ::glLoadIdentity();
   ::glMatrixMode(GL_MODELVIEW);
   ::glPushMatrix();
-  ::glVertexPointerf(xyz);
-  ::glTexCoordPointerf(uv);
+  ::glVertexPointer(4, GL_FLOAT, 0, xyz);
+  ::glTexCoordPointer(4, GL_FLOAT, 0, uv);
 
   ::glPointSize(2);
   ::glEnableClientState(GL_VERTEX_ARRAY);
   ::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  ::glEnable(TEXTURE_TARGET);
   ::glColor3f(1, 1, 1);
-  ::glDrawElements(GL_POINTS, xyz.size());
+  ::glDrawArrays(GL_POINTS, 0, num_coords);
   ::glDisableClientState(GL_VERTEX_ARRAY);
   ::glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-  ::glDisable(TEXTURE_TARGET);
   ::glPopMatrix();
   ::glPopMatrix();
 }
@@ -152,9 +194,9 @@ void Frame::render(float rotation[3])
 
 // Predicate to check whether a file path is a png file (or at least ends .png)
 
-static const boost::regex png_filter( ".*\.png" );
+static const boost::regex png_filter( ".*\\.png" );
 
-void is_png_file(const boost::filesystem::directory_iterator & i)
+bool is_png_file(const boost::filesystem::directory_iterator & i)
 {
   bool is = true;
   if(! boost::filesystem::is_regular_file(i->status()))
@@ -169,34 +211,56 @@ void is_png_file(const boost::filesystem::directory_iterator & i)
   return is;
 }
 
-// Load the expression frames
+// Load all the frames for an emotion directory into a vector
 
 void load_expression(const std::string & emotion_dir,
 		     std::vector<Frame> & frames)
 {
-  boost::filesystem::directory_iterator end; 
-  for(boost::filesystem::directory_iterator i(emotion_dir); i != end; ++i )
+  boost::filesystem::directory_iterator end;
+  boost::filesystem::directory_iterator i(emotion_dir);
+  // Get the first timestamp, so we can make the others relative to it
+  boost::filesystem::path first_path = (*i).path();
+  first_path.replace_extension(".");
+  float when_base = std::atof(first_path.filename().c_str());
+  // Then load each frame
+  for(; i != end; ++i )
   {
+    // use .pngs as the indicators of times. alphabetically they're first
     if (is_png_file(i))
     {
-      std::string::size_type dot = i->leaf().find_last_of('.');
-      // if dot == npos we want to crash, really...
-      std::string frame_path_root = i->leaf().substr(0, end + 1);
-      Frame frame(frame_path_root);
+      boost::filesystem::path path = (*i).path();
+      path.replace_extension(".");
+      Frame frame(path, when_base);
       frames.push_back(frame);
     }
   }
 }
 
-// Load all the expression frames into a map of emotion names : frame vectors
+// Load emotions from disk into a map of {emotion names : frame vectors}
+// Each frame on disk has the name format "seconds.fraction.png",
+// with.xyz and .uv files accompanying it
 
-void load_expressions(const std::string & person_dir,
-		      std::map<std::string, std::vector<Frame> > & expressions)
+void load_expressions(const std::string & person_dir)
 {
-  for(std::vector<std::string> i = emotions.begin; i != emotions.end(); ++i)
+  for(std::vector<std::string>::const_iterator i = emotions.begin();
+      i != emotions.end(); ++i)
   {
     std::vector<Frame> frames;
     load_expression(person_dir + "/" + *i, frames);
-    expressions[*i] = frames;
+    expression_frames[*i] = frames;
+    expression_ranges[*i] = frames.rend()->when;
   }
+}
+
+void draw_current_expression(const std::string & emotion, float now)
+{
+  std::vector<Frame>::iterator i = expression_frames[emotion].begin();
+  while(i->when < now)
+    {
+      ++i;
+      //REMOVE: sloooooooow. Remove as soon as this works
+      assert(i != expression_frames[emotion].end());
+    }
+  float rotation[] = {0.0, 0.0, 0.0};
+  i->render(rotation);
 }

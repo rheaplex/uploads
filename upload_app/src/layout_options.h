@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    main.cpp - main entry point
+//    layout_options.h - configure the layout
 //    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -16,22 +16,10 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ofMain.h"
-#include "ofAppGlutWindow.h"
-#include "ofxArgs.h"
+#ifndef __LAYOUT_OPTIONS_H__
+#define __LAYOUT_OPTIONS_H__
 
-#include "mainApp.h"
+extern void layout_add_options(po::options_description & desc);
+extern void layout_initialize(const po::variables_map & vm);
 
-//========================================================================
-int main(int argc, char * argv[]){
-  ofxArgs* args = new ofxArgs(argc, argv);
-
-  ofAppGlutWindow window;
-  ofSetupOpenGL(&window, 1024,768, OF_WINDOW); // <-------- setup the GL context
-
-  // this kicks off the running of my app
-  // can be OF_WINDOW or OF_FULLSCREEN
-  // pass in width and height too:
-  ofRunApp(new mainApp(args));
-  delete args;
-}
+#endif
