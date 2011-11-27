@@ -21,6 +21,7 @@
 #define __EXPRESSION_H__
 
 void load_expressions(const std::string & person_dir);
-void draw_current_expression(const std::string & emotion, float now);
+void update_expression(const std::string & emotion, double now);
+void draw__expression();
 
 #endif

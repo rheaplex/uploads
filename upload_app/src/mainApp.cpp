@@ -17,12 +17,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
+#include <sys/time.h>
 
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
-#include "drawing.h"
 #include "eeg.h"
+#include "emotion.h"
 #include "expression.h"
 #include "layout_options.h"
 #include "twitterStreaming.h"
@@ -48,8 +49,7 @@ void mainApp::setup(){
   }
 
   load_emotions(this->data_path);
-
-  drawing_setup();
+  //load_expressions(this->data_path);
 
   std::string twitter_userpass;
   if(this->args->contains("-twitter")){
@@ -62,27 +62,43 @@ void mainApp::setup(){
   ofSetWindowTitle("upload");
   ofSetFrameRate(60);
 
+  ofSetFullscreen(true);
+
   start_twitter_search(twitter_userpass);
-}
+} 
+
 
 //--------------------------------------------------------------
 void mainApp::update(){
+  // Get the current time
+  timeval tv;
+  ::gettimeofday(&tv, NULL);
+  now = tv.tv_sec + (tv.tv_usec/1000000.0);
+
+  // Find out what the current dominant emotion is
+  current_twitter_emotion(emotion);
+
+  // Reset the emotion map every so often
   static int count = 0;
   count++;
-  if (count == 100){
+  if (count == 1000){
     reset_twitter_emotion_map();
     count = 0;
   }
-  update_state();
-  update_display_data();
+
+  update_eegs(emotion, now);
+  //update_expression(emotion, now);
 }
+
 
 //--------------------------------------------------------------
 void mainApp::draw(){
-  ofSetColor(0xFFFFFFFF);
-  ofDrawBitmapString(current_emotion.c_str(), 100, 100);
+  ofEnableSmoothing();
+  ofSetLineWidth(2.0);
+  ofSetHexColor(0xFFFFFF);
+  ofDrawBitmapString(emotion.c_str(), 100, 100);
   draw_eegs();
-  draw_face();
+  //draw_expression();
 }
 
 

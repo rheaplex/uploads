@@ -156,6 +156,11 @@ void highest_emotion_count(emotion_map & emomap, std::string & emotion)
   emotion = max_name;
 }
 
+void current_twitter_emotion(std::string & emotion)
+{
+  highest_emotion_count(twitter_emotion_map, emotion);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Twitter streaming search result processing
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,7 +175,6 @@ size_t curl_callback_fun(void * ptr, size_t size, size_t nmemb, void * userdata)
   emotion_map & emomap = *reinterpret_cast<emotion_map *>(userdata);
   increment_emotions(emomap, data);
   //dump_emotion_map(std::cout, emomap);
-  highest_emotion_count(emomap, current_emotion);
   return data_length;
 }
 

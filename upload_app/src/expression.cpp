@@ -41,6 +41,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
+#include "eeg.h"
 #include "emotion.h"
 
 
@@ -107,6 +108,7 @@ size_t slurp_gzipped_csv_floats(float *& values, const std::string & path,
 class Frame
 {
 public:
+  Frame();
   Frame(const boost::filesystem::path & path_root, float when_base);
   ~Frame();
   void render(float rotation[3]);
@@ -123,6 +125,11 @@ private:
 
 std::map<std::string, std::vector<Frame> > expression_frames;
 std::map<std::string, float> expression_ranges;
+
+Frame::Frame() :
+  xyz(NULL), uv(NULL), num_coords(0)
+{
+}
 
 // Load the frame from the path
 
@@ -216,6 +223,7 @@ bool is_png_file(const boost::filesystem::directory_iterator & i)
 void load_expression(const std::string & emotion_dir,
 		     std::vector<Frame> & frames)
 {
+  std::cerr << emotion_dir << std::endl;
   boost::filesystem::directory_iterator end;
   boost::filesystem::directory_iterator i(emotion_dir);
   // Get the first timestamp, so we can make the others relative to it
@@ -248,11 +256,13 @@ void load_expressions(const std::string & person_dir)
     std::vector<Frame> frames;
     load_expression(person_dir + "/" + *i, frames);
     expression_frames[*i] = frames;
-    expression_ranges[*i] = frames.rend()->when;
+    expression_ranges[*i] = frames.back().when;
   }
 }
 
-void draw_current_expression(const std::string & emotion, float now)
+static Frame current_frame;
+
+void update_expression(const std::string & emotion, double now)
 {
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();
   while(i->when < now)
@@ -261,6 +271,12 @@ void draw_current_expression(const std::string & emotion, float now)
       //REMOVE: sloooooooow. Remove as soon as this works
       assert(i != expression_frames[emotion].end());
     }
+  current_frame = *i;
+}
+
+void draw_expression()
+{
+  
   float rotation[] = {0.0, 0.0, 0.0};
-  i->render(rotation);
+  current_frame.render(rotation);
 }

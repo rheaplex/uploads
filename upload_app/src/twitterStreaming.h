@@ -22,9 +22,7 @@
 #include <string>
 
 void start_twitter_search(const std::string & userpass);
-
 void reset_twitter_emotion_map();
-
-extern std::string current_emotion;
+void current_twitter_emotion(std::string & emotion);
 
 #endif

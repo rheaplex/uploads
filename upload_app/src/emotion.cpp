@@ -40,4 +40,3 @@ const std::vector<std::string> emotions = {"wonder", "love", "hatred", "desire",
 // NOTE: Non-atomic, written to by one thread, read by another, probably bad
 // NOTE: Check glibc implementation, it's probaby a pointer internally
 
-std::string current_emotion = emotions[0];

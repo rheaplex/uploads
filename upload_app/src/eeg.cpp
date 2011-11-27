@@ -23,7 +23,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -40,7 +39,11 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include "ofGraphics.h"
+#include "ofRectangle.h"
+
 #include "emotion.h"
+#include "layout.h"
 
 #include "eeg.h"
 
@@ -67,9 +70,37 @@ void normalize_timestamps(T & values, double base)
 // EEG Power Levels
 ////////////////////////////////////////////////////////////////////////////////
 
+struct power_levels
+{
+  // The indexes in the values
+  enum
+    {
+      poor_signal_level=0,
+      low_alpha,
+      high_alpha,
+      low_beta,
+      high_beta,
+      low_gamma,
+      high_gamma,
+      attention,
+      meditation
+      };
+
+  double timestamp;
+
+  // Because indexing these takes 1/10th the code of accessing named fields
+  int values[9];
+};
+
+typedef std::vector<power_levels> power_levels_vector;
+typedef power_levels_vector::iterator power_levels_iterator;
+
 std::vector<std::string> values_names = 
   {"poor signal level", "low alpha", "high alpha", "low beta", "high beta",
    "low gamma", "high gamma", "attention", "meditation"};
+
+// An empty power levels object to pre-populate the vector with
+const power_levels dummy_power_levels = {0.0, {0,0,0,0,0,0,0,0,0}};
 
 // Slurp power_levels from a tsv file into a vector
 
@@ -107,6 +138,17 @@ void slurp_power_levels(const std::string & file,
 ////////////////////////////////////////////////////////////////////////////////
 // Raw EEG data
 ////////////////////////////////////////////////////////////////////////////////
+
+struct raw_eeg
+{
+  double timestamp;
+  int value;
+};
+
+typedef std::vector<raw_eeg> raw_eeg_vector;
+typedef raw_eeg_vector::iterator raw_eeg_iterator;
+
+const raw_eeg dummy_raw_eeg = {0.0, 0};
 
 // Slurp raw eeg data from a tsv file into a vector
 
@@ -157,6 +199,20 @@ void truncate_eeg_to_levels_timestamps(raw_eeg_vector & eeg,
 ////////////////////////////////////////////////////////////////////////////////
 // The map of emotions to eeg data
 ////////////////////////////////////////////////////////////////////////////////
+
+// The data for an emotion
+
+struct emotion_data
+{
+  std::string name;
+  raw_eeg_vector raw_eeg;
+  power_levels_vector power_levels;
+  double max_levels_time;
+};
+
+// A map of emotion names to emotion data objects
+
+typedef std::map<std::string, emotion_data> emotion_data_map;
 
 // The map of emotion names to eeg data
 
@@ -227,7 +283,7 @@ void load_emotions(const std::string & username)
 static const unsigned int levels_to_display = 30;
 static const unsigned int eeg_to_display = 200;
 
-// The current time, mostly for debugging
+// The current time
 
 double last_update_at = 0.0;
 
@@ -242,8 +298,9 @@ power_levels_iterator current_levels_iterator;
 
 // The data to plot visually
 
-std::deque<power_levels> levels_display_data;
-std::deque<raw_eeg> eeg_display_data;
+std::deque<power_levels> levels_display_data(levels_to_display,
+					     dummy_power_levels);
+std::deque<raw_eeg> eeg_display_data(eeg_to_display, dummy_raw_eeg);
 
 // Set a data item iterator to the current time
 // Used in initialization and when the current emotion is changed
@@ -254,13 +311,15 @@ typename T::iterator set_current_iterator(float current_time_mod, T & source)
   typename T::iterator iter = source.begin();
   while((*iter).timestamp < current_time_mod)
   {
-    iter++;
+    ++iter;
   }
   return iter;
 }
 
 // Take data from the source vector and push into the destination vector
 // This wraps round carefully
+// But it won't handle multiple loops through the data
+// so make sure update times fit into sample times
 
 template<class T, class U>
 void update_data_vector(double now_mod,
@@ -269,25 +328,24 @@ void update_data_vector(double now_mod,
 			U & destination,
 			typename T::iterator & iter)
 {
-  typename T::iterator end = source.end();
-  // if we've wrapped round
-  // in pathalogical cases of system delay we will miss multiple passes
+  // If we've wrapped round
+  // In pathalogical cases of system delay we will miss multiple passes
   //  if that happens there are probably worse things to worry about
   //  and the code won't fail, it
   if(now_mod < previous_mod)
-  {
-    // push the remaining values
-    for(; iter != end; ++iter)
+  { 
+    // Push the remaining values
+    for(; iter != source.end(); ++iter)
     {
       destination.push_front(*iter);
     }
     // and wrap round
     iter = source.begin();
   }
-  // whether we looped or not, keep pushing values until we hit the current time
-  while((*iter).timestamp <= now_mod)
+  // Whether we looped or not, keep pushing values until we hit the current time
+  while(iter->timestamp <= now_mod)
   {
-    // push the new value
+    // Push the new value
     destination.push_front(*iter);
     // Move on to the next data item
     ++iter;
@@ -301,29 +359,13 @@ void update_data_vector(double now_mod,
 // Update the drawing data as time elapses
 ////////////////////////////////////////////////////////////////////////////////
 
+std::string previous_emotion = "";
+
 // Get the current time in the range 0..max_timestamp
 
-double current_time(emotion_data & data)
+double mod_time(emotion_data & data, double now)
 {
-  timeval tv;
-  ::gettimeofday(&tv, NULL);
-  return std::fmod(tv.tv_sec + (tv.tv_usec/1000000.0), data.max_levels_time);
-}
-
-// set the current emotion name and data
-//  and create the initial iterators
-// this must be done after we get the first update from Twitter
-
-void update_state()
-{
-  current_emotion_data = emotion_datas[current_emotion];
-  double now = current_time(current_emotion_data);
-  last_update_at = now;
-  //std::cerr << "update_state " << current_emotion << " " << now << std::endl;
-  current_eeg_iterator =
-    set_current_iterator(now, current_emotion_data.raw_eeg);
-  current_levels_iterator =
-    set_current_iterator(now, current_emotion_data.power_levels);
+  return std::fmod(now, data.max_levels_time);
 }
 
 // update the display data
@@ -331,93 +373,102 @@ void update_state()
 //  then truncate the display data if too long
 // note that our use of globals makes this non-threadsafe
 
-double update_display_data()
+void update_eegs(const std::string & emotion, double raw_time)
 {
-  double now = current_time(current_emotion_data);
-  //std::cerr << "updating at " << now << std::endl;
+  // Handle being called before Twitter streaming has started
+  if(emotion == "")
+    {
+      return;
+    }
+  if(emotion != previous_emotion)
+    {
+      current_emotion_data = emotion_datas[emotion];
+      current_eeg_iterator =
+	set_current_iterator(last_update_at, current_emotion_data.raw_eeg);
+      current_levels_iterator =
+	set_current_iterator(last_update_at,current_emotion_data.power_levels);
+      previous_emotion = emotion;
+    }
+  double current_update_at = mod_time(current_emotion_data, raw_time);
   // Push new data
-  //update_data_vector(now, last_update_at,
-  //		     current_emotion_data.raw_eeg, eeg_display_data,
-  //		     current_eeg_iterator);
-  update_data_vector(now, last_update_at,
+  update_data_vector(current_update_at, last_update_at,
+  		     current_emotion_data.raw_eeg, eeg_display_data,
+  		     current_eeg_iterator);
+  update_data_vector(current_update_at, last_update_at,
 		     current_emotion_data.power_levels,
 		     levels_display_data, current_levels_iterator);
   // Truncate old data
   eeg_display_data.resize(std::min(eeg_display_data.size(), eeg_to_display));
   levels_display_data.resize(std::min(levels_display_data.size(),
 				      levels_to_display));
-  last_update_at = now;
-  return now;
+  last_update_at = current_update_at;
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Testing, debugging, etc.
+// Draw the current eeg data
 ////////////////////////////////////////////////////////////////////////////////
 
-// print a *bit* of information about the emotion
+// FIXME: make these configurable
 
-void print_emotion(const emotion_data & emo)
+static const int eeg_min = -2048;
+static const int eeg_max = 2048;
+static const double eeg_scale = 1.0 / (eeg_max - eeg_min);
+static const int attention_meditation_min = 0;
+static const int attention_meditation_max = 100;
+static const int levels_min = 0;
+// 24-bit MAX_INT
+static const int levels_max = 16777215;
+static const double levels_scale = 1.0 / (levels_max - levels_min);
+
+// Draw the frame for a wave plot
+
+void frame_wave(int index)
 {
-  std::cerr << emo.name << std::endl;
-  //const power_levels_vector & levels = emo.power_levels;
-  std::cerr << "eeg start/end:" << std::endl;
-  const raw_eeg estart = emo.raw_eeg.front(); 
-  const raw_eeg eend = emo.raw_eeg.back(); 
-  std::cerr << std::fixed << estart.timestamp << " " 
-	      << estart.value << std::endl;
-  std::cerr << std::fixed << eend.timestamp << " " 
-	      << eend.value << std::endl;
-  std::cerr << "levels start/end:" << std::endl;
-  power_levels lstart = emo.power_levels.front(); 
-  power_levels lend = emo.power_levels.back(); 
-  std::cerr << std::fixed << lstart.timestamp << " " 
-	    << lstart.values[power_levels::low_gamma] << std::endl;
-  std::cerr << std::fixed << lend.timestamp << " " 
-	    << lend.values[power_levels::low_gamma] << std::endl;
+  ofRectangle & frame = eeg_bounds(index);
+  ofNoFill();
+  ofSetHexColor(0xFFFFFF);
+  ofRect(frame.x, frame.y, frame.width, frame.height);
 }
 
-// print the current global state
+// Plot a waveform
 
-void print_current_state()
+void draw_wave(int index, size_t count,
+	      double (*accessor)(int index, size_t i))
 {
-  std::cerr << "Now: " << last_update_at << std::endl;
-  std::cerr << current_emotion 
-	    << ": "
-	    << current_emotion_data.name
-	    << std::endl;
-  std::cerr << "eeg iterator timestamp: " << (*current_eeg_iterator).timestamp
-	    << std::endl;
-  std::cerr << "level iterator timestamp: " 
-	    << (*current_levels_iterator).timestamp
-	    << std::endl;
-  std::cerr << "levels data (len " << levels_display_data.size() << ")" 
-	    << std::endl;
-  for(int i = 0; i < std::min(5, (int)levels_display_data.size()); i++)
-    std::cerr << levels_display_data[i].timestamp << ": "
-	      << levels_display_data[i].values[power_levels::low_gamma] << " ";
-  if(! levels_display_data.empty())
-    std::cerr << std::endl;
-  std::cerr << "eeg data (len " << eeg_display_data.size() << ")" 
-	    << std::endl;
-  for(int i = 0; i < std::min(5, (int)eeg_display_data.size()); i++)
-    std::cerr << eeg_display_data[i].timestamp << ": "
-	      << eeg_display_data[i].value << " ";
-  if(! eeg_display_data.empty())
-    std::cerr << std::endl;
+  ofRectangle & frame = eeg_bounds(index);
+  float step = frame.width / (count - 1);
+  float x = frame.x;
+  ofNoFill();
+  ofSetHexColor(0xFFFFFF);
+  ofBeginShape();
+  for(size_t i = 0; i < count; i++)
+    {
+      // Subtract value from 1.0 so 0 is at the bottom of the drawing area
+      float y = frame.y + (frame.height * (1.0 - accessor(index, i)));
+      ofVertex(x, y);
+      x += step;
+    }
+  ofEndShape();
 }
 
-void data_test()
+// Draw the raw eeg and the primary processed values
+
+void draw_eegs()
 {
-  emotion_data & emo = emotion_datas["love"];
-  print_emotion(emo);
-  current_emotion = "love";
-  update_state();
-  print_current_state();
-  for(int i = 0; i < 50; i++)
-  {
-    ::usleep(250000);
-    update_display_data();
-    print_current_state();
-  }
+  for(int i = EEG_LOW; i < EEG_ABOVE; i++)
+    {
+      frame_wave(i - EEG_LOW);
+    }
+
+  draw_wave(0, eeg_display_data.size(),
+	    [](int index, size_t i){
+	      return eeg_scale * (eeg_display_data[i].value - eeg_min);});
+
+  for(int i = EEG_LOW; i < EEG_ABOVE; i++)
+    {
+      draw_wave(i - EEG_LOW, levels_display_data.size(),
+		[](int index, size_t i){
+		  return levels_scale * levels_display_data[i].values[index];});
+    }
 }

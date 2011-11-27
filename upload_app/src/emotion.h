@@ -26,8 +26,4 @@
 
 extern const std::vector<std::string> emotions;
 
-// The current emotion. Should be an int, but seems to behave itself
-
-extern std::string current_emotion;
-
 #endif

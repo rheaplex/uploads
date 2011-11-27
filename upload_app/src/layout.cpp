@@ -57,46 +57,17 @@ namespace
   
   float large_label_size = 12;
   float small_label_size = 6;
+
+  // These are the values from the eeg values to use
+  // We discard the error and use the others
+  // eeg_above is exclusive
+  int eeg_low = 1;
+  int eeg_above = 9;
+
+  // The bounds rectangles to render each eeg trace in
+  std::vector<ofRectangle> eeg_bounds_rect;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-// Configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void layout_add_options(po::options_description & desc)
-{
-  desc.add_options()
-    ("outer_border", po::value<float>(), "set outer border in pixels")
-    ("inner_border", po::value<float>(), "set inner border in pixels")
-    ("eeg_padding", po::value<float>(), "set distance between eeg traces")
-    ("large_label_size", po::value<float>(), "set large label size in pixels")
-    ("small_label_size", po::value<float>(), "set small label size in pixels");
-}
-
-void layout_initialize(const po::variables_map & vm)
-{
-  if(vm.count("outer_border"))
-    outer_border_width = vm["outer_border"].as<float>();
-  if(vm.count("inner_border"))
-    inner_border_width = vm["inner_border"].as<float>();
-  if(vm.count("outer_border"))
-    outer_border_width = vm["outer_border"].as<float>();
-  if(vm.count("eeg_padding"))
-    b_cell_vertical_padding = vm["eeg_padding"].as<float>();
-  if(vm.count("large_label_size"))
-    large_label_size = vm["large_label_size"].as<float>();
-  if(vm.count("small_label_size"))
-    small_label_size = vm["small_label_size"].as<float>();
-
-  screen_width = ofGetWidth();
-  screen_height = ofGetHeight();
-
-  // Hmmm. But this makes them the same. Handle or leave?
-  // Set to default value if not set by user
-  if(inner_border_width == 0)
-    inner_border_width = outer_border_width / 2.0;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Public layout functions
@@ -139,4 +110,61 @@ void calculate_eeg_bounds(int index, int count, ofRectangle & bounds)
   bounds.width = (screen_width / 3.0) -
     (outer_border_width + inner_border_width);
   bounds.height = (b_height - (b_cell_vertical_padding * (count - 1))) / count;
+}
+
+void calculate_eegs_bounds()
+{
+  int count = eeg_above - eeg_low;
+  for(int i = 0; i < count; i++)
+    {
+      ofRectangle bounds;
+      calculate_eeg_bounds(i, count, bounds);
+      eeg_bounds_rect.push_back(bounds);
+    }
+}
+
+ofRectangle & eeg_bounds(int index)
+{
+  return eeg_bounds_rect[index];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Configuration
+// (Which calls some earlier functions, and so comes last)
+////////////////////////////////////////////////////////////////////////////////
+
+void layout_add_options(po::options_description & desc)
+{
+  desc.add_options()
+    ("outer_border", po::value<float>(), "set outer border in pixels")
+    ("inner_border", po::value<float>(), "set inner border in pixels")
+    ("eeg_padding", po::value<float>(), "set distance between eeg traces")
+    ("large_label_size", po::value<float>(), "set large label size in pixels")
+    ("small_label_size", po::value<float>(), "set small label size in pixels");
+}
+
+void layout_initialize(const po::variables_map & vm)
+{
+  if(vm.count("outer_border"))
+    outer_border_width = vm["outer_border"].as<float>();
+  if(vm.count("inner_border"))
+    inner_border_width = vm["inner_border"].as<float>();
+  if(vm.count("outer_border"))
+    outer_border_width = vm["outer_border"].as<float>();
+  if(vm.count("eeg_padding"))
+    b_cell_vertical_padding = vm["eeg_padding"].as<float>();
+  if(vm.count("large_label_size"))
+    large_label_size = vm["large_label_size"].as<float>();
+  if(vm.count("small_label_size"))
+    small_label_size = vm["small_label_size"].as<float>();
+
+  screen_width = ofGetWidth();
+  screen_height = ofGetHeight();
+
+  // Hmmm. But this makes them the same. Handle or leave?
+  // Set to default value if not set by user
+  if(inner_border_width == 0)
+    inner_border_width = outer_border_width / 2.0;
+
+  calculate_eegs_bounds();
 }

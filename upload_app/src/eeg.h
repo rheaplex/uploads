@@ -19,89 +19,18 @@
 #ifndef __EEG_H__
 #define __EEG_H__
 
-#include <deque>
-#include <map>
 #include <string>
-#include <vector>
 
+// These are the values from the eeg values to use
+// We discard the error and use the others
+// eeg_above is exclusive
+#define EEG_LOW 1
+#define EEG_ABOVE 8
 
-////////////////////////////////////////////////////////////////////////////////
-// EEG Power Levels
-////////////////////////////////////////////////////////////////////////////////
+void load_emotions(const std::string & name);
 
-struct power_levels
-{
-  // The indexes in the values
-  enum
-    {
-      poor_signal_level=0,
-      low_alpha,
-      high_alpha,
-      low_beta,
-      high_beta,
-      low_gamma,
-      high_gamma,
-      attention,
-      meditation
-      };
-
-  double timestamp;
-
-  // Because indexing these takes 1/10th the code of accessing named fields
-  int values[9];
-};
-
-typedef std::vector<power_levels> power_levels_vector;
-typedef power_levels_vector::iterator power_levels_iterator;
-
-extern std::vector<std::string> values_names;
-
-////////////////////////////////////////////////////////////////////////////////
-// Raw EEG data
-////////////////////////////////////////////////////////////////////////////////
-
-struct raw_eeg
-{
-  double timestamp;
-  int value;
-};
-
-typedef std::vector<raw_eeg> raw_eeg_vector;
-typedef raw_eeg_vector::iterator raw_eeg_iterator;
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Eeg data for emotions
-////////////////////////////////////////////////////////////////////////////////
-
-// The data for an emotion
-
-struct emotion_data
-{
-  std::string name;
-  raw_eeg_vector raw_eeg;
-  power_levels_vector power_levels;
-  double max_levels_time;
-};
-
-// A map of emotion names to emotion data objects
-
-typedef std::map<std::string, emotion_data> emotion_data_map;
-
-// Load EEG datas from file
-
-void  load_emotions(const std::string & name);
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Current data state for plotting
-////////////////////////////////////////////////////////////////////////////////
-
-void update_state();
-double update_display_data();
-
-extern std::deque<power_levels> levels_display_data;
-extern std::deque<raw_eeg> eeg_display_data;
-
+void update_eegs(const std::string & emotion, double now);
+void draw_eegs();
 
 #endif
+

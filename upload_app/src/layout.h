@@ -19,13 +19,12 @@
 #ifndef __LAYOUT_H__
 #define __LAYOUT_H__
 
-#include "ofPoint.h"
 #include "ofRectangle.h"
 
 extern float label_size_small();
 extern float label_size_large();
-extern void calculate_face_bounds(ofRectangle & bounds);
-extern float eeg_padding_v();
-extern void calculate_eeg_bounds(int index, int count, ofRectangle & bounds);
+
+extern ofRectangle & eeg_bounds(int index);
 
 #endif
+
