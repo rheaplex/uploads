@@ -36,6 +36,7 @@
 #include <boost/regex.hpp>
 #include <boost/tokenizer.hpp>
 
+#include "ofGraphics.h"
 #include <ofImage.h>
 
 #include <GL/gl.h>
@@ -43,6 +44,8 @@
 
 #include "eeg.h"
 #include "emotion.h"
+#include "expression.h"
+#include "layout.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,7 +279,8 @@ void update_expression(const std::string & emotion, double now)
 
 void draw_expression()
 {
-  
-  float rotation[] = {0.0, 0.0, 0.0};
-  current_frame.render(rotation);
+  ofRectangle bounds = face_bounds();
+  ofRect(bounds);
+  /*float rotation[] = {0.0, 0.0, 0.0};
+    current_frame.render(rotation);*/
 }

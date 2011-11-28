@@ -47,22 +47,27 @@ namespace
   // The border between the inner cells and the edge of the drawing area, 
   //  and each other
   
-  float outer_border_width = 10.0;
-  float inner_border_width;
-  
+  float outer_border_width = 20.0;
+  float inner_border_width = outer_border_width / 2.0;
+
+  // The gap between each eeg graph
   // Just use inner border? Default to it...
-  float b_cell_vertical_padding = 12;
+
+  float b_cell_vertical_padding = outer_border_width;
   
   // Labels
   
   float large_label_size = 12;
-  float small_label_size = 6;
+  float small_label_size = 12;
 
   // These are the values from the eeg values to use
   // We discard the error and use the others
   // eeg_above is exclusive
+
   int eeg_low = 1;
   int eeg_above = 9;
+
+  ofRectangle face_bounds_rect;
 
   // The bounds rectangles to render each eeg trace in
   std::vector<ofRectangle> eeg_bounds_rect;
@@ -88,13 +93,18 @@ float eeg_padding_v()
   return b_cell_vertical_padding;
 }
 
-void calculate_face_bounds(ofRectangle & bounds)
+void calculate_face_bounds()
 {
-  bounds.x = outer_border_width;
-  bounds.y = outer_border_width;
-  bounds.width = (screen_width / 3.0) - 
+  face_bounds_rect.x = outer_border_width;
+  face_bounds_rect.y = outer_border_width;
+  face_bounds_rect.width = ((screen_width / 3.0) * 2.0) - 
     (outer_border_width + inner_border_width);
-  bounds.height = screen_height - (outer_border_width / 2.0);
+  face_bounds_rect.height = screen_height - (outer_border_width * 2.0);
+}
+
+ofRectangle & face_bounds()
+{
+  return face_bounds_rect;
 }
 
 // We could usefully cache many of the values this calculates for speed
@@ -102,19 +112,18 @@ void calculate_face_bounds(ofRectangle & bounds)
 
 void calculate_eeg_bounds(int index, int count, ofRectangle & bounds)
 { 
-  float b_height = screen_height - (outer_border_width / 2.0);
+  float b_height = screen_height - (outer_border_width * 2.0);
   float cell_vertical_offset = b_height / count;
 
-  bounds.x = screen_width - ((screen_width / 3.0) + (outer_border_width));
+  bounds.x = screen_width - (screen_width / 3.0) + inner_border_width;
   bounds.y = outer_border_width + (cell_vertical_offset * index);
-  bounds.width = (screen_width / 3.0) -
-    (outer_border_width + inner_border_width);
+  bounds.width = (screen_width / 3.0) - (outer_border_width + inner_border_width);
   bounds.height = (b_height - (b_cell_vertical_padding * (count - 1))) / count;
 }
 
 void calculate_eegs_bounds()
 {
-  int count = eeg_above - eeg_low;
+  int count = (eeg_above - eeg_low) - 1;
   for(int i = 0; i < count; i++)
     {
       ofRectangle bounds;
@@ -127,6 +136,7 @@ ofRectangle & eeg_bounds(int index)
 {
   return eeg_bounds_rect[index];
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Configuration
@@ -166,5 +176,6 @@ void layout_initialize(const po::variables_map & vm)
   if(inner_border_width == 0)
     inner_border_width = outer_border_width / 2.0;
 
+  calculate_face_bounds();
   calculate_eegs_bounds();
 }
