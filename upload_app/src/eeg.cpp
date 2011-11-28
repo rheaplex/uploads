@@ -50,10 +50,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 // Timestamps
-// EEG samples are taken at given times, expressed as timestamps
+// Samples are taken at given times, expressed as timestamps
 ////////////////////////////////////////////////////////////////////////////////
 
-// Normalize timestamps in eeg sample objects in a vector to be relative to
+// Normalize timestamps in sample objects in a vector to be relative to
 // the first as time 0
 
 template<class T>
@@ -421,6 +421,8 @@ static const int levels_min = 0;
 static const int levels_max = 16777215;
 static const double levels_scale = 1.0 / (levels_max - levels_min);
 
+std::string raw_label("Raw EEG");
+
 // Draw the frame for a wave plot
 
 void frame_wave(int index)
@@ -452,21 +454,30 @@ void draw_wave(int index, size_t count,
   ofEndShape();
 }
 
+void draw_label(int index, std::string & label)
+{
+  ofRectangle & frame = eeg_bounds(index);
+  ofDrawBitmapString(label, frame.x,
+		     frame.y + frame.height + label_size_small());
+}
+
 // Draw the raw eeg and the primary processed values
 
 void draw_eegs()
 {
-  for(int i = EEG_LOW; i < EEG_ABOVE; i++)
+  for(int i = 0; i < 7; i++)
     {
-      frame_wave(i - EEG_LOW);
+      frame_wave(i);
     }
 
+  draw_label(0, raw_label);
   draw_wave(0, eeg_display_data.size(),
 	    [](int index, size_t i){
 	      return eeg_scale * (eeg_display_data[i].value - eeg_min);});
-
+  
   for(int i = EEG_LOW; i < EEG_ABOVE; i++)
     {
+      draw_label((i - EEG_LOW) + 1, values_names[i]);
       draw_wave(i - EEG_LOW, levels_display_data.size(),
 		[](int index, size_t i){
 		  return levels_scale * levels_display_data[i].values[index];});

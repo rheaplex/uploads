@@ -25,6 +25,7 @@ extern float label_size_small();
 extern float label_size_large();
 
 extern ofRectangle & eeg_bounds(int index);
+extern ofRectangle & face_bounds();
 
 #endif
 

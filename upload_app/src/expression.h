@@ -22,6 +22,6 @@
 
 void load_expressions(const std::string & person_dir);
 void update_expression(const std::string & emotion, double now);
-void draw__expression();
+void draw_expression();
 
 #endif
