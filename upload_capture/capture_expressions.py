@@ -175,11 +175,7 @@ def capture_emotions(person_name, emotions, duration):
     captured_emotions = {}
     print """I am going to prompt you to pretend to feel the following emotions for %s seconds each: %s""" % (duration, ', '.join(emotions))
     for emotion in emotions:
-        # Folder may already exist thanks to capture_emotion
-        # Check for existing face files to see...
-        if not glob.glob(os.path.join(person_name, emotion,
-                                      "*.%s" % KINECT_FRAME_FORMAT)):
-            capture_emotion(captured_emotions, person_name, emotion, duration)
+        capture_emotion(captured_emotions, person_name, emotion, duration)
     freenect.sync_stop()
     save_emotions(captured_emotions, person_name)
 
@@ -195,16 +191,32 @@ def usage():
     sys.exit(1)
 
 
+def new_emotions(person_name):
+    """List the emotions that need capturing"""
+    emotions = []
+    for emotion in EMOTIONS:
+        # Folder may already exist due to capture_emotion, so check for files
+        if not glob.glob(os.path.join(person_name, emotion,
+                                      "*.%s" % KINECT_FRAME_FORMAT)):
+            emotions.append(emotion)
+    if emotions == []:
+        print "All emotions captured for %s, exiting." % person_name
+        sys.exit(0)
+    return emotions
+
+
 def main():
     """Capture emotions."""
     if len(sys.argv) != 2:
         usage()
     person_name = sys.argv[1]
+    emotions = EMOTIONS
     if os.path.exists(person_name):
         print "Folder for %s exists. Adding any missing faces." % person_name
+        emotions = new_emotions(person_name) 
     else:
         os.mkdir(person_name)
-    capture_emotions(person_name, EMOTIONS, SECONDS_TO_CAPTURE_EMOTION_FOR)
+    capture_emotions(person_name, emotions, SECONDS_TO_CAPTURE_EMOTION_FOR)
 
 
 if __name__ == "__main__":
