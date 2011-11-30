@@ -63,11 +63,14 @@ KINECT_FRAME_FORMAT = 'png'
 ################################################################################
 
 class KinectFrame(object):
-
+    
     def getFrame(self):
         self.when = time.time()
-        self.depth,_ = freenect.sync_get_depth()
-        self.rgb,_ = freenect.sync_get_video()
+        depth,_ = freenect.sync_get_depth()
+        rgb,_ = freenect.sync_get_video()
+        # Retain a copy otherwise we crash later
+        self.depth = numpy.copy(depth)
+        self.rgb = numpy.copy(rgb)
 
     def xyzuv(self):
         q = self.depth
@@ -75,18 +78,24 @@ class KinectFrame(object):
                              range(KINECT_FRAME_HEIGHT))
         d = 4
         return calibkinect.depth2xyzuv(q[::d,::d],X[::d,::d],Y[::d,::d])
-
-
+    
+    
     def dumpFrame(self, path):
         """Save rgb, xyz and uv data for frame as tsv files with simple names"""
         # Save as png.
         # png is 10x the size of jpeg, but we only halve the data per second
         # if we use jpeg as the other data is already compressed
-        pil_image = Image.frombuffer('RGB',
-                                     (KINECT_FRAME_WIDTH,KINECT_FRAME_HEIGHT),
-                                     self.rgb, 'raw', 'RGB', 0, 1)
-        pil_image.save(os.path.join(path, "%s.%s" % (self.when,
-                                                     KINECT_FRAME_FORMAT)),
+        mode = 'RGBA'
+        size = (KINECT_FRAME_WIDTH, KINECT_FRAME_HEIGHT)
+        # Swizzle the rgb array to a form PIL will like
+        rgb = self.rgb.reshape(self.rgb.shape[0] * self.rgb.shape[1],
+                                 self.rgb.shape[2])
+        rgb = numpy.c_[rgb, 255 * numpy.ones((len(rgb), 1), numpy.uint8)]
+        # Inefficiently convert the array to a PIL image
+        pil_image = Image.frombuffer(mode, size, rgb.tostring(), 'raw', mode,
+                                     0, 1)
+        pil_image.save(os.path.join(path, 
+                                    "%s.%s" % (self.when, KINECT_FRAME_FORMAT)),
                        optimize=True)
         xyz, uv = self.xyzuv()
         # Save as gzipped tsv. Floats aren't portable, ascii is verbose
@@ -99,10 +108,10 @@ class KinectFrame(object):
         for sample in xyz:
             print >>xyz_out, "%f\t%f\t%f" % (sample[0], sample[1], sample[2])
         xyz_out.close()
-
+    
     def displayFrame(self):
         # Just show the rgb data for speed
-        cv.ShowImage('both', numpy.array(self.rgb[::2,::2,::-1]))
+        cv.ShowImage('both', self.rgb[::2,::2,::-1])
         cv.WaitKey(5)
 
 
