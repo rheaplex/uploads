@@ -114,12 +114,12 @@ class Frame
 {
 public:
   Frame();
-  Frame(const boost::filesystem::path & path_root, float when_base);
+  Frame(const boost::filesystem::path & path_root, double when_base);
   ~Frame();
   void render(float rotation[3]);
 
 public:
-  float when;
+  double when;
 
 private:
   // So we can copy Frames into STL containers
@@ -139,7 +139,7 @@ Frame::Frame() :
 
 // Load the frame from the path
 
-Frame::Frame(const boost::filesystem::path & path_root, float when_base)
+Frame::Frame(const boost::filesystem::path & path_root, double when_base)
 {
   // The path is of the format /a/b/c/2346.12
   when = std::atof(path_root.filename().c_str()) - when_base;
@@ -230,19 +230,21 @@ void load_expression(const std::string & emotion_dir,
   std::cerr << emotion_dir << std::endl;
   boost::filesystem::directory_iterator end;
   boost::filesystem::directory_iterator i(emotion_dir);
-  // Get the first timestamp, so we can make the others relative to it
-  boost::filesystem::path first_path = (*i).path();
-  first_path.replace_extension(".");
-  float when_base = std::atof(first_path.filename().c_str());
+  double when_base = -1.0;
   // Then load each frame
   for(; i != end; ++i )
   {
     // use .pngs as the indicators of times. alphabetically they're first
     if (is_png_file(i))
     {
-      boost::filesystem::path path = (*i).path();
-      std::cerr << path << std::endl;
-      path.replace_extension(".");
+      boost::filesystem::path path(i->path());
+      path.replace_extension("");
+      std::cerr << path.string() << std::endl;
+      // We need to set the base timestamp from the first png filename
+      if(when_base == -1.0)
+      {
+	when_base = std::atof(path.filename().c_str());
+      }
       Frame frame(path, when_base);
       frames.push_back(frame);
     }
