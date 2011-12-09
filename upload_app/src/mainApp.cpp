@@ -49,7 +49,7 @@ void mainApp::setup(){
   }
 
   load_emotions(this->data_path);
-  //load_expressions(this->data_path);
+  load_expressions(this->data_path);
 
   std::string twitter_userpass;
   if(this->args->contains("-twitter")){
@@ -62,7 +62,7 @@ void mainApp::setup(){
   ofSetWindowTitle("upload");
   ofSetFrameRate(60);
 
-  ofSetFullscreen(true);
+  //ofSetFullscreen(true);
 
   start_twitter_search(twitter_userpass);
 } 
@@ -77,6 +77,11 @@ void mainApp::update(){
 
   // Find out what the current dominant emotion is
   current_twitter_emotion(emotion);
+  // If we haven't got any streaming results yet the emotion will be empty
+  // So try again next time
+  if(emotion == ""){
+    return;
+  }
 
   // Reset the emotion map every so often
   static int count = 0;
@@ -87,7 +92,7 @@ void mainApp::update(){
   }
 
   update_eegs(emotion, now);
-  //update_expression(emotion, now);
+  update_expression(emotion, now);
 }
 
 
@@ -98,7 +103,7 @@ void mainApp::draw(){
   ofSetHexColor(0xFFFFFF);
   ofDrawBitmapString(emotion.c_str(), 100, 100);
   draw_eegs();
-  draw_expression();
+  //draw_expression();
 }
 
 

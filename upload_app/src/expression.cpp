@@ -34,6 +34,7 @@
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/regex.hpp>
+#include <boost/shared_array.hpp>
 #include <boost/tokenizer.hpp>
 
 #include "ofGraphics.h"
@@ -83,12 +84,13 @@ void slurp_gzipped_lines(const std::string & path,
 // Load the values of a gzipped tsv file into an array of floats
 // Caller owns the new[] float array
 
-size_t slurp_gzipped_csv_floats(float *& values, const std::string & path,
+size_t slurp_gzipped_csv_floats(boost::shared_array<float> & values,
+				const std::string & path,
 				int stride)
 {
   std::vector<std::string> lines;
   slurp_gzipped_lines(path, lines);
-  values = new float[lines.size() * stride];
+  values = boost::shared_array<float>(new float[lines.size() * stride]);
   for(size_t i = 0; i < lines.size(); i++)
   {
     boost::tokenizer<>::iterator tokens = 
@@ -120,8 +122,9 @@ public:
   float when;
 
 private:
-  float * xyz;
-  float * uv;
+  // So we can copy Frames into STL containers
+  boost::shared_array<float> xyz;
+  boost::shared_array<float> uv;
   size_t num_coords;
   ofTexture rgb;
 };
@@ -130,7 +133,7 @@ std::map<std::string, std::vector<Frame> > expression_frames;
 std::map<std::string, float> expression_ranges;
 
 Frame::Frame() :
-  xyz(NULL), uv(NULL), num_coords(0)
+  num_coords(0)
 {
 }
 
@@ -140,9 +143,9 @@ Frame::Frame(const boost::filesystem::path & path_root, float when_base)
 {
   // The path is of the format /a/b/c/2346.12
   when = std::atof(path_root.filename().c_str()) - when_base;
-  num_coords = slurp_gzipped_csv_floats(xyz, path_root.string() + ".xyz", 3);
-  size_t other_num_coords = slurp_gzipped_csv_floats(xyz,
-						     path_root.string() + ".uv",
+  num_coords = slurp_gzipped_csv_floats(xyz, path_root.string() + "xyz", 3);
+  size_t other_num_coords = slurp_gzipped_csv_floats(uv,
+						     path_root.string() + "uv",
 						     2);
   // Move this to a non-debug check
   assert(num_coords == other_num_coords);
@@ -151,8 +154,6 @@ Frame::Frame(const boost::filesystem::path & path_root, float when_base)
 
 Frame::~Frame()
 {
-  if(xyz) delete[] xyz;
-  if(uv) delete[] uv;
 }
 
 // Render the frame in the OpenGL context
@@ -183,8 +184,8 @@ void Frame::render(float rotation[3])
   ::glLoadIdentity();
   ::glMatrixMode(GL_MODELVIEW);
   ::glPushMatrix();
-  ::glVertexPointer(4, GL_FLOAT, 0, xyz);
-  ::glTexCoordPointer(4, GL_FLOAT, 0, uv);
+  ::glVertexPointer(4, GL_FLOAT, 0, xyz.get());
+  ::glTexCoordPointer(4, GL_FLOAT, 0, uv.get());
 
   ::glPointSize(2);
   ::glEnableClientState(GL_VERTEX_ARRAY);
@@ -240,6 +241,7 @@ void load_expression(const std::string & emotion_dir,
     if (is_png_file(i))
     {
       boost::filesystem::path path = (*i).path();
+      std::cerr << path << std::endl;
       path.replace_extension(".");
       Frame frame(path, when_base);
       frames.push_back(frame);
@@ -267,8 +269,11 @@ static Frame current_frame;
 
 void update_expression(const std::string & emotion, double now)
 {
+  // Make sure the value is in range
+  double now_mod = std::fmod(now, expression_frames[emotion].rbegin()->when);
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();
-  while(i->when < now)
+  std::cerr << now_mod << std::endl;
+  while(i->when < now_mod)
     {
       ++i;
       //REMOVE: sloooooooow. Remove as soon as this works
@@ -281,6 +286,6 @@ void draw_expression()
 {
   ofRectangle bounds = face_bounds();
   ofRect(bounds);
-  /*float rotation[] = {0.0, 0.0, 0.0};
-    current_frame.render(rotation);*/
+  float rotation[] = {0.0, 0.0, 0.0};
+  current_frame.render(rotation);
 }

@@ -10,14 +10,14 @@ OF_ROOT = ~/of_preRelease_v007_linux
 # for example search paths like:
 # USER_CFLAGS = -I src/objects
 
-USER_CFLAGS = -std=c++0x
+USER_CFLAGS = -g -std=c++0x
 
 
 # USER_LDFLAGS allows to pass custom flags to the linker
 # for example libraries like:
 # USER_LD_FLAGS = libs/libawesomelib.a
 
-USER_LDFLAGS = 
+USER_LDFLAGS =
 
 
 # use this to add system libraries for example:
