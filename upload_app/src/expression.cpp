@@ -70,7 +70,7 @@ static const GLclampf CLEAR_COLOUR[4] = {0, 0, 0, 0};
 void slurp_gzipped_lines(const std::string & path,
 			 std::vector<std::string> & lines)
 {
-  std::ifstream file(path, ios_base::in | ios_base::binary);
+  std::ifstream file(path);//, ios_base::in | ios_base::binary);
   boost::iostreams::filtering_stream<boost::iostreams::input> in;
   in.push(boost::iostreams::gzip_decompressor());
   in.push(file);
@@ -91,10 +91,11 @@ size_t slurp_gzipped_csv_floats(boost::shared_array<float> & values,
   std::vector<std::string> lines;
   slurp_gzipped_lines(path, lines);
   values = boost::shared_array<float>(new float[lines.size() * stride]);
+  typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+  boost::char_separator<char> sep("\t");
   for(size_t i = 0; i < lines.size(); i++)
   {
-    boost::tokenizer<>::iterator tokens = 
-      boost::tokenizer<>(lines[i]).begin();
+    tokenizer::iterator tokens = tokenizer(lines[i], sep).begin();
     int index = i * stride;
     for(int j = 0; j < stride; j++)
     {
@@ -143,9 +144,9 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base)
 {
   // The path is of the format /a/b/c/2346.12
   when = std::atof(path_root.filename().c_str()) - when_base;
-  num_coords = slurp_gzipped_csv_floats(xyz, path_root.string() + "xyz", 3);
+  num_coords = slurp_gzipped_csv_floats(xyz, path_root.string() + ".xyz", 3);
   size_t other_num_coords = slurp_gzipped_csv_floats(uv,
-						     path_root.string() + "uv",
+						     path_root.string() + ".uv",
 						     2);
   // Move this to a non-debug check
   assert(num_coords == other_num_coords);
@@ -160,9 +161,10 @@ Frame::~Frame()
 
 void Frame::render(float rotation[3])
 {
-  ::glClearColor(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2],
-		 CLEAR_COLOUR[3]);
-  ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  //rgb.draw(0, 0, 200, 200);
+ /*::glClearColor(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2],
+    CLEAR_COLOUR[3]);
+    ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
   ::glEnable(GL_DEPTH_TEST);
 
   ::glPushMatrix();
@@ -173,17 +175,13 @@ void Frame::render(float rotation[3])
   ::glMatrixMode(GL_MODELVIEW);
   ::glLoadIdentity();
 
-  //::glScale(zoomdist,zoomdist,1)
-  ::glTranslatef(0, 0, -3.5);
-  ::glRotatef(rotation[0], 1.0, 0.0, 0.0);
-  ::glRotatef(rotation[1], 0.0, 1.0, 0.0);
-  ::glRotatef(rotation[2], 0.0, 0.0, 1.0);
-  ::glTranslatef(0, 0, 1.5);
+  ::glTranslatef(0, 0, -2.0);
 
   ::glMatrixMode(GL_TEXTURE);
   ::glLoadIdentity();
   ::glMatrixMode(GL_MODELVIEW);
   ::glPushMatrix();
+
   ::glVertexPointer(4, GL_FLOAT, 0, xyz.get());
   ::glTexCoordPointer(4, GL_FLOAT, 0, uv.get());
 
@@ -231,12 +229,13 @@ void load_expression(const std::string & emotion_dir,
   boost::filesystem::directory_iterator end;
   boost::filesystem::directory_iterator i(emotion_dir);
   double when_base = -1.0;
-  // Then load each frame
+  // Load each frame
   for(; i != end; ++i )
   {
     // use .pngs as the indicators of times. alphabetically they're first
     if (is_png_file(i))
     {
+      // Strip the .png extention to get a base /path/time.stamp
       boost::filesystem::path path(i->path());
       path.replace_extension("");
       std::cerr << path.string() << std::endl;
@@ -274,7 +273,6 @@ void update_expression(const std::string & emotion, double now)
   // Make sure the value is in range
   double now_mod = std::fmod(now, expression_frames[emotion].rbegin()->when);
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();
-  std::cerr << now_mod << std::endl;
   while(i->when < now_mod)
     {
       ++i;

@@ -103,7 +103,7 @@ void mainApp::draw(){
   ofSetHexColor(0xFFFFFF);
   ofDrawBitmapString(emotion.c_str(), 100, 100);
   draw_eegs();
-  //draw_expression();
+  draw_expression();
 }
 
 
