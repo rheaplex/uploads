@@ -125,7 +125,7 @@ void slurp_power_levels(const std::string & file,
     power_levels levels;
     levels.timestamp = ::atof(fields[0].c_str());
     levels.values = {::atoi(fields[1].c_str()), 
-		     ::atoi(fields[2].c_str()), ::atoi(fields[4].c_str()),
+		     ::atoi(fields[2].c_str()), ::atoi(fields[3].c_str()),
 		     ::atoi(fields[4].c_str()), ::atoi(fields[5].c_str()),
 		     ::atoi(fields[6].c_str()), ::atoi(fields[7].c_str()),
 		     ::atoi(fields[8].c_str()), ::atoi(fields[9].c_str())};
@@ -363,7 +363,7 @@ std::string previous_emotion = "";
 
 // Get the current time in the range 0..max_timestamp
 
-double mod_time(emotion_data & data, double now)
+static double mod_time(emotion_data & data, double now)
 {
   return std::fmod(now, data.max_levels_time);
 }
@@ -464,20 +464,28 @@ void draw_label(int index, std::string & label)
 // Draw the raw eeg and the primary processed values
 
 void draw_eegs()
-{
-  for(int i = 0; i < 7; i++)
-    {
-      frame_wave(i);
-    }
+{  
+  ofEnableSmoothing();
+  ofSetLineWidth(2.0);
 
+  for(int i = 0; i < EEG_COUNT; i++)
+  {
+      frame_wave(i);
+  }
+
+  // Draw the raw values separately
   draw_label(0, raw_label);
   draw_wave(0, eeg_display_data.size(),
 	    [](int index, size_t i){
 	      return eeg_scale * (eeg_display_data[i].value - eeg_min);});
   
+  for(int i = 1; i < EEG_COUNT; i++)
+  {
+    draw_label(i, values_names[i + EEG_LOW - 1]);
+  }
+
   for(int i = EEG_LOW; i < EEG_ABOVE; i++)
     {
-      draw_label((i - EEG_LOW) + 1, values_names[i]);
       draw_wave(i - EEG_LOW, levels_display_data.size(),
 		[](int index, size_t i){
 		  return levels_scale * levels_display_data[i].values[index];});

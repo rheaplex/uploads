@@ -16,6 +16,11 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
+//FIXME: Zeroth frame isn't drawn!
+
+//TODO: Centre plot in its area on the screen
+//TODO: Scale plot to height of its area on the screen
+//TODO: Crop plot to bounds of its area on the screen
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
@@ -38,7 +43,7 @@
 #include <boost/tokenizer.hpp>
 
 #include "ofGraphics.h"
-#include <ofImage.h>
+#include "ofImage.h"
 
 #include <GL/gl.h>
 #include <GL/glu.h>
@@ -123,18 +128,14 @@ public:
   double when;
 
 private:
-  // So we can copy Frames into STL containers
-  boost::shared_array<float> xyz;
-  boost::shared_array<float> uv;
-  size_t num_coords;
-  ofTexture rgb;
+  ofImage rgb;
+  ofMesh mesh;
 };
 
 std::map<std::string, std::vector<Frame> > expression_frames;
 std::map<std::string, float> expression_ranges;
 
-Frame::Frame() :
-  num_coords(0)
+Frame::Frame()
 {
 }
 
@@ -144,13 +145,31 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base)
 {
   // The path is of the format /a/b/c/2346.12
   when = std::atof(path_root.filename().c_str()) - when_base;
-  num_coords = slurp_gzipped_csv_floats(xyz, path_root.string() + ".xyz", 3);
+  // Load the texture map
+  ofLoadImage(rgb, path_root.string() + ".png");
+  boost::shared_array<float> xyz;
+  size_t num_coords = slurp_gzipped_csv_floats(xyz,
+					       path_root.string() + ".xyz",
+					       3);
+  boost::shared_array<float> uv;
   size_t other_num_coords = slurp_gzipped_csv_floats(uv,
 						     path_root.string() + ".uv",
 						     2);
   // Move this to a non-debug check
-  assert(num_coords == other_num_coords);
-  ofLoadImage(rgb, path_root.string() + ".png");
+  if(num_coords != other_num_coords)
+  {
+    throw "Coord count mismatch";
+  }
+  // Create the mesh
+  mesh.setMode(OF_PRIMITIVE_POINTS);
+  for(size_t i = 0; i < num_coords; i++)
+  {
+    float * tex = uv.get() + (i * 2);
+    float * point = xyz.get() + (i * 3);
+    // Flip the Vs. rgb.height is zero at this point(!), so use the constant
+    mesh.addTexCoord(ofVec2f(tex[0], TEXTURE_HEIGHT - tex[1]));
+    mesh.addVertex(ofVec3f(point[0], point[1], point[2]));
+  }
 }
 
 Frame::~Frame()
@@ -161,39 +180,21 @@ Frame::~Frame()
 
 void Frame::render(float rotation[3])
 {
-  //rgb.draw(0, 0, 200, 200);
- /*::glClearColor(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2],
-    CLEAR_COLOUR[3]);
-    ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
-  ::glEnable(GL_DEPTH_TEST);
-
-  ::glPushMatrix();
-
-  ::glMatrixMode(GL_PROJECTION);
-  ::glLoadIdentity();
-  ::gluPerspective(60, 4.0 / 3.0, 0.3, 200);
-  ::glMatrixMode(GL_MODELVIEW);
-  ::glLoadIdentity();
-
-  ::glTranslatef(0, 0, -2.0);
-
-  ::glMatrixMode(GL_TEXTURE);
-  ::glLoadIdentity();
-  ::glMatrixMode(GL_MODELVIEW);
-  ::glPushMatrix();
-
-  ::glVertexPointer(4, GL_FLOAT, 0, xyz.get());
-  ::glTexCoordPointer(4, GL_FLOAT, 0, uv.get());
-
-  ::glPointSize(2);
-  ::glEnableClientState(GL_VERTEX_ARRAY);
-  ::glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  ::glColor3f(1, 1, 1);
-  ::glDrawArrays(GL_POINTS, 0, num_coords);
-  ::glDisableClientState(GL_VERTEX_ARRAY);
-  ::glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-  ::glPopMatrix();
-  ::glPopMatrix();
+  glPointSize(10);
+  ofPushMatrix();
+  // Fixme /////////////////////////////////////////////////////////////////////
+  // We should scale and centre this programatically based on the layout
+  // Centre the render
+  ofTranslate(0.5, 0.5, -2);
+  // Kinect range is -2/+2 metres usually. Scale to pixel values (roughly)
+  ofScale(1000, 1000, 1000);
+  // End Fixme /////////////////////////////////////////////////////////////////
+  glEnable(GL_DEPTH_TEST);
+  rgb.bind();
+  mesh.drawVertices();
+  rgb.unbind();
+  glDisable(GL_DEPTH_TEST);
+  ofPopMatrix();
 }
 
 
@@ -274,17 +275,18 @@ void update_expression(const std::string & emotion, double now)
   double now_mod = std::fmod(now, expression_frames[emotion].rbegin()->when);
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();
   while(i->when < now_mod)
-    {
-      ++i;
-      //REMOVE: sloooooooow. Remove as soon as this works
-      assert(i != expression_frames[emotion].end());
-    }
+  {
+    ++i;
+    //REMOVE: sloooooooow. Remove as soon as this works
+    assert(i != expression_frames[emotion].end());
+  }
   current_frame = *i;
 }
 
 void draw_expression()
 {
   ofRectangle bounds = face_bounds();
+  ofNoFill();
   ofRect(bounds);
   float rotation[] = {0.0, 0.0, 0.0};
   current_frame.render(rotation);
