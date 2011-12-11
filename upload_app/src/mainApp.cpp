@@ -62,7 +62,7 @@ void mainApp::setup(){
   ofSetWindowTitle("upload");
   ofSetFrameRate(60);
 
-  //ofSetFullscreen(true);
+  ofSetFullscreen(true);
 
   start_twitter_search(twitter_userpass);
 } 
@@ -98,10 +98,12 @@ void mainApp::update(){
 
 //--------------------------------------------------------------
 void mainApp::draw(){
-  ofEnableSmoothing();
-  ofSetLineWidth(2.0);
-  ofSetHexColor(0xFFFFFF);
-  ofDrawBitmapString(emotion.c_str(), 100, 100);
+  // If we haven't got any streaming results yet the emotion will be empty
+  // and the state won't be configured
+  // So try again next time
+  if(emotion == ""){
+    return;
+  }
   draw_eegs();
   draw_expression();
 }
