@@ -18,9 +18,7 @@
 
 //FIXME: Zeroth frame isn't drawn!
 
-//TODO: Centre plot in its area on the screen
-//TODO: Scale plot to height of its area on the screen
-//TODO: Crop plot to bounds of its area on the screen
+//FIXME: Update rotation on timer so it's smoother
 
 ////////////////////////////////////////////////////////////////////////////////
 // Includes
@@ -42,6 +40,7 @@
 #include <boost/shared_array.hpp>
 #include <boost/tokenizer.hpp>
 
+#include "ofAppRunner.h"
 #include "ofGraphics.h"
 #include "ofImage.h"
 
@@ -61,9 +60,17 @@
 static const int TEXTURE_WIDTH = 640;
 static const int TEXTURE_HEIGHT = 480;
 
-static const float MAX_ROTATION_DRIFT = 0.8f;
+// Degrees
+static const float ROTATION_DRIFT = 0.1f;
+static const float MAX_ROTATION_DRIFT = 10.0f;
 
 static const GLclampf CLEAR_COLOUR[4] = {0, 0, 0, 0};
+
+// The rear clipping plane distance in metres
+static const float REAR_CLIP = 3.0;
+
+// The size of the squares
+static const float VOXEL_SIZE = 5.0;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,12 +131,17 @@ public:
   ~Frame();
   void render(float rotation[3]);
 
+private:
+  void calculate_smallest_y_max(boost::shared_array<float> & xyz,
+				size_t coord_count);
+
 public:
   double when;
 
 private:
   ofImage rgb;
   ofMesh mesh;
+  float smallest_y_max;
 };
 
 std::map<std::string, std::vector<Frame> > expression_frames;
@@ -160,15 +172,25 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base)
   {
     throw "Coord count mismatch";
   }
+  // Get the closest maximal distance to the y origin above or below it
+  calculate_smallest_y_max(xyz, num_coords);
   // Create the mesh
   mesh.setMode(OF_PRIMITIVE_POINTS);
+  // Scale the points to window co-ordinates
+  ofRectangle fb = face_bounds();
+  float scale = (fb.height / smallest_y_max) / 2.0;
   for(size_t i = 0; i < num_coords; i++)
   {
-    float * tex = uv.get() + (i * 2);
     float * point = xyz.get() + (i * 3);
-    // Flip the Vs. rgb.height is zero at this point(!), so use the constant
-    mesh.addTexCoord(ofVec2f(tex[0], TEXTURE_HEIGHT - tex[1]));
-    mesh.addVertex(ofVec3f(point[0], point[1], point[2]));
+    // Z Clip here rather than during rendering
+    // Note that we compare abs(x) to max y to make the mesh roughly square
+    if((point[2] < REAR_CLIP) || (std::abs(point[1]) > smallest_y_max))
+    {
+      float * tex = uv.get() + (i * 2);
+      // Flip the Vs. rgb.height is zero at this point(!), so use the constant
+      mesh.addTexCoord(ofVec2f(tex[0], TEXTURE_HEIGHT - tex[1]));
+      mesh.addVertex(ofVec3f(point[0] * scale, point[1] * scale, point[2]));
+    }
   }
 }
 
@@ -176,30 +198,54 @@ Frame::~Frame()
 {
 }
 
+void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
+				     size_t coord_count)
+{
+  // The lowest negative value. So min neg, but you get the idea...
+  float max_neg = 0.0;
+  float max_pos = 0.0;
+  for(size_t i = 0; i < coord_count; i++)
+  {
+    double y = xyz[(3 * i) + 1];
+    if(y > max_pos)
+    {
+      max_pos = y;
+    }
+    else if(y < max_neg)
+    {
+      max_neg = y;
+    }
+  }
+  smallest_y_max = std::min(std::fabs(max_neg), max_pos);
+}
+
 // Render the frame in the OpenGL context
 
 void Frame::render(float rotation[3])
 {
-  glPointSize(10);
+  ofRectangle fb = face_bounds();
+  glPointSize(VOXEL_SIZE);
   ofPushMatrix();
-  // Fixme /////////////////////////////////////////////////////////////////////
-  // We should scale and centre this programatically based on the layout
-  // Centre the render
-  ofTranslate(0.5, 0.5, -2);
-  // Kinect range is -2/+2 metres usually. Scale to pixel values (roughly)
-  ofScale(1000, 1000, 1000);
-  // End Fixme /////////////////////////////////////////////////////////////////
+  // Centre drawing on the face area
+  ofTranslate((fb.x + (fb.width / 2.0)), (fb.y + (fb.height / 2.0)), 0.0);
+  ofRotateX(rotation[0]);
+  ofRotateY(rotation[1]);
+  ofRotateZ(rotation[2]);
   glEnable(GL_DEPTH_TEST);
+  // Clip to the face drawing area
+  glEnable(GL_SCISSOR_TEST);
+  glScissor(fb.x, fb.y, fb.width, fb.height);
   rgb.bind();
   mesh.drawVertices();
   rgb.unbind();
   glDisable(GL_DEPTH_TEST);
+  glDisable(GL_SCISSOR_TEST);
   ofPopMatrix();
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Emotion loading
+// Expression loading
 ////////////////////////////////////////////////////////////////////////////////
 
 // Predicate to check whether a file path is a png file (or at least ends .png)
@@ -267,27 +313,74 @@ void load_expressions(const std::string & person_dir)
   }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// State updating
+////////////////////////////////////////////////////////////////////////////////
+
+// The frame we are currently drawing
 static Frame current_frame;
+
+// The rotation to draw the frame at
+float rotation[] = {0.0, 0.0, 0.0};
+
+// C++ really doesn't have a float pseudo-random number generator
+
+float frand()
+{
+  return ((float)random()) / (float)RAND_MAX;
+}
+
+// Drift one rotation within the set limit of rotation
+
+void update_one_rotation(float &rotation)
+{
+  float delta = frand() * ROTATION_DRIFT;
+  // Half the time the amount is positive, half the time it's negative
+  if(frand() > 0.5)
+  {
+    delta = - delta;
+  }
+  float new_rotation = rotation + delta;
+  if(std::fabs(new_rotation) <= MAX_ROTATION_DRIFT)
+  {
+    rotation = new_rotation;
+  }
+}
+
+// Drift the rotation of the frame around the origin
+
+void update_rotation()
+{
+  update_one_rotation(rotation[0]);
+  update_one_rotation(rotation[1]);
+  update_one_rotation(rotation[2]);
+}
+
+// Set the expression frame for the current emotion at the current time
 
 void update_expression(const std::string & emotion, double now)
 {
+  update_rotation();
   // Make sure the value is in range
   double now_mod = std::fmod(now, expression_frames[emotion].rbegin()->when);
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();
   while(i->when < now_mod)
   {
     ++i;
-    //REMOVE: sloooooooow. Remove as soon as this works
-    assert(i != expression_frames[emotion].end());
   }
   current_frame = *i;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Rendering
+////////////////////////////////////////////////////////////////////////////////
 
 void draw_expression()
 {
   ofRectangle bounds = face_bounds();
   ofNoFill();
   ofRect(bounds);
-  float rotation[] = {0.0, 0.0, 0.0};
   current_frame.render(rotation);
 }

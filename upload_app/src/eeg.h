@@ -26,7 +26,7 @@
 // eeg_above is exclusive
 #define EEG_LOW 1
 #define EEG_ABOVE 8
-#define EEG_COUNT EEG_ABOVE - EEG_LOW
+#define EEG_COUNT (EEG_ABOVE - EEG_LOW)
 
 void load_emotions(const std::string & name);
 
