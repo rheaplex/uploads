@@ -41,7 +41,6 @@ from emotions import EMOTIONS
 # Configuration
 ################################################################################
 
-
 # How many seconds of data to capture each emotion for
 SECONDS_TO_CAPTURE_EMOTION_FOR = 2
 
