@@ -167,17 +167,33 @@ class EegData(object):
 ################################################################################
 
 
-def get_data_for_n_seconds(seconds):
-    """Read data from the Synapse server for n seconds,
-       and return it as a single string"""
-    end_time = time.time() + seconds
+def start_receiving_eeg_data():
+    """Connect a socket to the Synapse server"""
     s = socket.create_connection(("localhost", 13854))
-    chunks = []
-    while time.time() < end_time:
-        chunks.append(s.recv(CHUNK_MAX_SIZE))
+    return
+
+
+def stop_receiving_eeg_data(s):
+    """Disconnect a socket from the Synapse server"""
     #s.shutdown(socket.SHUT_RDWR)
     s.close()
-    return ''.join(chunks)
+
+
+def receive_eeg_data(s):
+    """Receive eeg data from a socket connected to the Synapse server"""
+    return s.recv(CHUNK_MAX_SIZE)
+
+
+def get_data_for_n_seconds(seconds):
+    """Read data from the Synapse server for n seconds,
+       and return it as a list of chunks"""
+    end_time = time.time() + seconds
+    s = start_receiving_eeg_data()
+    chunks = []
+    while time.time() < end_time:
+        chunks.append(receive_eeg_data(s))
+    stop_receiving_eeg_data(s)
+    return chunks
 
 
 def split_data(output):
@@ -189,14 +205,20 @@ def split_data(output):
     return splitted
 
 
-def eeg_data_from_n_seconds_data(seconds):
-    """Capture n seconds data from the Synapse server and return as an
-       EegData object"""
-    raw_data = get_data_for_n_seconds(seconds)
+def eeg_data_from_chunks(chunk_list):
+    """Convert a list of chunks of data to an EegData object"""
+    raw_data = ''.join(chunk_list)
     data_lines = split_data(raw_data)
     eeg_data = EegData()
     eeg_data.populate_from_data(data_lines)
     return eeg_data
+
+
+def eeg_data_from_n_seconds_data(seconds):
+    """Capture n seconds data from the Synapse server and return as an
+       EegData object"""
+    chunks = get_data_for_n_seconds(seconds)
+    return eeg_data_from_chunks(chunks)
 
 
 ################################################################################
