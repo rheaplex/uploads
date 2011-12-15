@@ -57,10 +57,13 @@
 // Configuration
 ////////////////////////////////////////////////////////////////////////////////
 
+// The height and width of a Kinect texture
+
 static const int TEXTURE_WIDTH = 640;
 static const int TEXTURE_HEIGHT = 480;
 
-// Degrees
+// How the voxel render rotation drifts over time
+// In degrees
 static const float ROTATION_DRIFT = 0.1f;
 static const float MAX_ROTATION_DRIFT = 10.0f;
 
@@ -69,7 +72,7 @@ static const GLclampf CLEAR_COLOUR[4] = {0, 0, 0, 0};
 // The rear clipping plane distance in metres
 static const float REAR_CLIP = 3.0;
 
-// The size of the squares
+// The size of the squares for the voxel render
 static const float VOXEL_SIZE = 5.0;
 
 
@@ -94,7 +97,6 @@ void slurp_gzipped_lines(const std::string & path,
 }
 
 // Load the values of a gzipped tsv file into an array of floats
-// Caller owns the new[] float array
 
 size_t slurp_gzipped_csv_floats(boost::shared_array<float> & values,
 				const std::string & path,
@@ -123,6 +125,8 @@ size_t slurp_gzipped_csv_floats(boost::shared_array<float> & values,
 // Frames
 ////////////////////////////////////////////////////////////////////////////////
 
+// A frame of Kinect data
+
 class Frame
 {
 public:
@@ -144,14 +148,18 @@ private:
   float smallest_y_max;
 };
 
+// The map of emotion names to vectors of frames
+
 std::map<std::string, std::vector<Frame> > expression_frames;
-std::map<std::string, float> expression_ranges;
+
+// Basic constructor. For STL containers.
 
 Frame::Frame()
 {
 }
 
-// Load the frame from the path
+// Constructor. Load the frame from the path
+// And make its timestamp relative to the first frame
 
 Frame::Frame(const boost::filesystem::path & path_root, double when_base)
 {
@@ -194,9 +202,14 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base)
   }
 }
 
+// Destructor
+
 Frame::~Frame()
 {
 }
+
+// Calculate the smallest maximum value above or below the y origin
+// e.g. if the range of y values is -1.23..4.56, this returns 1.23
 
 void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
 				     size_t coord_count)
@@ -219,7 +232,7 @@ void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
   smallest_y_max = std::min(std::fabs(max_neg), max_pos);
 }
 
-// Render the frame in the OpenGL context
+// Render the frame
 
 void Frame::render(float rotation[3])
 {
@@ -250,10 +263,9 @@ void Frame::render(float rotation[3])
 
 // Predicate to check whether a file path is a png file (or at least ends .png)
 
-static const boost::regex png_filter( ".*\\.png" );
-
 bool is_png_file(const boost::filesystem::directory_iterator & i)
 {
+  static boost::regex png_filter( ".*\\.png" );
   bool is = true;
   if(! boost::filesystem::is_regular_file(i->status()))
   {
@@ -267,7 +279,7 @@ bool is_png_file(const boost::filesystem::directory_iterator & i)
   return is;
 }
 
-// Load all the frames for an emotion directory into a vector
+// Load all the frames for an emotion directory into a vector of Frame objects
 
 void load_expression(const std::string & emotion_dir,
 		     std::vector<Frame> & frames)
@@ -309,7 +321,6 @@ void load_expressions(const std::string & person_dir)
     std::vector<Frame> frames;
     load_expression(person_dir + "/" + *i, frames);
     expression_frames[*i] = frames;
-    expression_ranges[*i] = frames.back().when;
   }
 }
 
@@ -331,7 +342,7 @@ float frand()
   return ((float)random()) / (float)RAND_MAX;
 }
 
-// Drift one rotation within the set limit of rotation
+// Drift one rotation by up to the drifr amount, clamping it to the max rotation
 
 void update_one_rotation(float &rotation)
 {
@@ -357,7 +368,7 @@ void update_rotation()
   update_one_rotation(rotation[2]);
 }
 
-// Set the expression frame for the current emotion at the current time
+// Set the frame to be rendered from the current emotion at the current time
 
 void update_expression(const std::string & emotion, double now)
 {
@@ -376,6 +387,8 @@ void update_expression(const std::string & emotion, double now)
 ////////////////////////////////////////////////////////////////////////////////
 // Rendering
 ////////////////////////////////////////////////////////////////////////////////
+
+// Render the current frame in its bounds rectangle in the layout
 
 void draw_expression()
 {
