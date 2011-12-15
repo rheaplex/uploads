@@ -19,7 +19,7 @@
 #ifndef __LAYOUT_H__
 #define __LAYOUT_H__
 
-#include "ofRectangle.h"
+class ofRectangle;
 
 extern float label_size_small();
 extern float label_size_large();

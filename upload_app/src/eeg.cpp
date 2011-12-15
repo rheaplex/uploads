@@ -50,11 +50,10 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 // Timestamps
-// Samples are taken at given times, expressed as timestamps
 ////////////////////////////////////////////////////////////////////////////////
 
-// Normalize timestamps in sample objects in a vector to be relative to
-// the first as time 0
+// Normalize timestamps in the sample objects in a vector to be relative to
+// the first as time 0.0
 
 template<class T>
 void normalize_timestamps(T & values, double base)
@@ -92,15 +91,35 @@ struct power_levels
   int values[9];
 };
 
+// A vector of power level samples for an emotion
+
 typedef std::vector<power_levels> power_levels_vector;
 typedef power_levels_vector::iterator power_levels_iterator;
+
+// The names for the power level samples
 
 std::vector<std::string> values_names = 
   {"poor signal level", "low alpha", "high alpha", "low beta", "high beta",
    "low gamma", "high gamma", "attention", "meditation"};
 
-// An empty power levels object to pre-populate the vector with
+// An empty power levels object to pre-populate a vector with
+
 const power_levels dummy_power_levels = {0.0, {0,0,0,0,0,0,0,0,0}};
+
+// Create a power_levels object from the values in a line of data
+
+void line_to_levels(const std::string & line, power_levels & levels)
+{
+  std::vector<std::string> fields;
+  boost::split(fields, line, boost::is_any_of("\t"));
+  levels.timestamp = ::atof(fields[0].c_str());
+  levels.values = {::atoi(fields[1].c_str()), ::atoi(fields[2].c_str()),
+		   ::atoi(fields[3].c_str()), ::atoi(fields[4].c_str()),
+		   ::atoi(fields[5].c_str()),	::atoi(fields[6].c_str()),
+		   ::atoi(fields[7].c_str()), ::atoi(fields[8].c_str()),
+		   ::atoi(fields[9].c_str())};
+  assert(levels.timestamp != 0.0);
+}
 
 // Slurp power_levels from a tsv file into a vector
 
@@ -109,27 +128,25 @@ void slurp_power_levels(const std::string & file,
 {
   std::ifstream source(file);
   if(!source.is_open())
+  {
     throw std::runtime_error("Couldn't open file " + file);
+  }
   while(source)
   {
     std::string line;
     std::getline(source, line);
     // Skip comments
     if(line.length() > 0 && line[0] == '#')
+    {
       continue;
+    }
     // We get an empty line at the end???
     if(line.length() == 0)
+    {
       break;
-    std::vector<std::string> fields;
-    boost::split(fields, line, boost::is_any_of("\t"));
+    }
     power_levels levels;
-    levels.timestamp = ::atof(fields[0].c_str());
-    levels.values = {::atoi(fields[1].c_str()), 
-		     ::atoi(fields[2].c_str()), ::atoi(fields[3].c_str()),
-		     ::atoi(fields[4].c_str()), ::atoi(fields[5].c_str()),
-		     ::atoi(fields[6].c_str()), ::atoi(fields[7].c_str()),
-		     ::atoi(fields[8].c_str()), ::atoi(fields[9].c_str())};
-    assert(levels.timestamp != 0.0);
+    line_to_levels(line, levels);
     levels_vector.push_back(levels);	      
   }
 }
@@ -144,6 +161,8 @@ struct raw_eeg
   double timestamp;
   int value;
 };
+
+// A vector of raw eeg values for an emotion
 
 typedef std::vector<raw_eeg> raw_eeg_vector;
 typedef raw_eeg_vector::iterator raw_eeg_iterator;
@@ -169,9 +188,7 @@ void slurp_raw_eeg(const std::string & file, raw_eeg_vector & eeg_vector)
       break;
     std::vector<std::string> fields;
     boost::split(fields, line, boost::is_any_of("\t"));
-    raw_eeg eeg = {
-      ::atof(fields[0].c_str()), ::atoi(fields[1].c_str())
-    };
+    raw_eeg eeg = {atof(fields[0].c_str()), atoi(fields[1].c_str())};
     assert(eeg.timestamp != 0.0);
     eeg_vector.push_back(eeg);				      
   }
@@ -409,7 +426,7 @@ void update_eegs(const std::string & emotion, double raw_time)
 // Draw the current eeg data
 ////////////////////////////////////////////////////////////////////////////////
 
-// FIXME: make these configurable
+// Min/max values for various items
 
 static const int eeg_min = -2048;
 static const int eeg_max = 2048;
@@ -420,6 +437,8 @@ static const int levels_min = 0;
 // 24-bit MAX_INT
 static const int levels_max = 16777215;
 static const double levels_scale = 1.0 / (levels_max - levels_min);
+
+// The label for the Raw EEG plot
 
 std::string raw_label("Raw EEG");
 
@@ -467,12 +486,10 @@ void draw_eegs()
 {  
   ofEnableSmoothing();
   ofSetLineWidth(2.0);
-
   for(int i = 0; i < EEG_COUNT; i++)
   {
       frame_wave(i);
   }
-
   // Draw the raw values separately
   draw_label(0, raw_label);
   draw_wave(0, eeg_display_data.size(),
@@ -485,9 +502,9 @@ void draw_eegs()
   }
 
   for(int i = EEG_LOW; i < EEG_ABOVE; i++)
-    {
-      draw_wave(i - EEG_LOW, levels_display_data.size(),
-		[](int index, size_t i){
-		  return levels_scale * levels_display_data[i].values[index];});
-    }
+  {
+    draw_wave(i - EEG_LOW, levels_display_data.size(),
+	      [](int index, size_t i){
+		return levels_scale * levels_display_data[i].values[index];});
+  }
 }

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    twitter_streaming.cpp - twotter streaming search
+//    twitter_streaming.cpp - twitter streaming search
 //    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
 //
 //    This program is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
+//TODO: Configure from Boost config. Especially the bounds
 
 ////////////////////////////////////////////////////////////////////////////////
 // includes
@@ -110,7 +111,7 @@ void reset_twitter_emotion_map()
   }
 }
 
-// Scan the data for mention of emotions
+// Scan the message body of the tweet for mention of emotions
 // This needs making more flexible (e.g. check for happy & happiness)
 
 void increment_emotions(emotion_map & emomap, const std::string & data)
@@ -161,6 +162,7 @@ void current_twitter_emotion(std::string & emotion)
   highest_emotion_count(twitter_emotion_map, emotion);
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Twitter streaming search result processing
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +189,7 @@ size_t curl_callback_fun(void * ptr, size_t size, size_t nmemb, void * userdata)
 
 pthread_t twitter_streaming_thread;
 
-// Do everything
+// Run the Twitter streaming search using Curl
 
 void * run_streaming_search(void * user_pass)
 {
@@ -212,6 +214,8 @@ void * run_streaming_search(void * user_pass)
   }
   ::pthread_exit(0);
 }
+
+// Create and run the streaming search thread
 
 void start_twitter_search(const std::string & userpass)
 {

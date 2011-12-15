@@ -50,7 +50,7 @@ namespace
   float outer_border_width = 20.0;
   float inner_border_width = outer_border_width / 2.0;
 
-  // The gap between each eeg graph
+  // The gap between each eeg graph (b-cells, as opposed to the face a-cell)
   // Just use inner border? Default to it...
 
   float b_cell_vertical_padding = outer_border_width;
@@ -60,12 +60,13 @@ namespace
   float large_label_size = 12;
   float small_label_size = 12;
 
-  // These are the values from the eeg values to use
-  // We discard the error and use the others
+  // These are the values from the eegs to use
   // eeg_above is exclusive
 
   int eeg_low = 1;
   int eeg_above = 9;
+
+  // The bounds of the face rectangle, or "a-cell"
 
   ofRectangle face_bounds_rect;
 
@@ -78,20 +79,28 @@ namespace
 // Public layout functions
 ////////////////////////////////////////////////////////////////////////////////
 
+// Accessor
+
 float label_size_small()
 {
   return small_label_size;
 }
+
+// Accessor
 
 float label_size_large()
 {
   return large_label_size;
 }
 
+// Accessor for the vertical padding between b-cells
+
 float eeg_padding_v()
 {
   return b_cell_vertical_padding;
 }
+
+// Calculate the bounds of the a-cell for the face
 
 void calculate_face_bounds()
 {
@@ -101,6 +110,8 @@ void calculate_face_bounds()
     (outer_border_width + inner_border_width);
   face_bounds_rect.height = screen_height - (outer_border_width * 2.0);
 }
+
+// Accessor
 
 ofRectangle & face_bounds()
 {
@@ -121,6 +132,8 @@ void calculate_eeg_bounds(int index, int count, ofRectangle & bounds)
   bounds.height = (b_height - (b_cell_vertical_padding * (count - 1))) / count;
 }
 
+// Calculate the bounds for all the b-cells
+
 void calculate_eegs_bounds()
 {
   int count = (eeg_above - eeg_low) - 1;
@@ -131,6 +144,8 @@ void calculate_eegs_bounds()
       eeg_bounds_rect.push_back(bounds);
     }
 }
+
+// Accessor. Return the b cell for the given index
 
 ofRectangle & eeg_bounds(int index)
 {
@@ -143,6 +158,8 @@ ofRectangle & eeg_bounds(int index)
 // (Which calls some earlier functions, and so comes last)
 ////////////////////////////////////////////////////////////////////////////////
 
+// Describe the layout options to Boost
+
 void layout_add_options(po::options_description & desc)
 {
   desc.add_options()
@@ -152,6 +169,8 @@ void layout_add_options(po::options_description & desc)
     ("large_label_size", po::value<float>(), "set large label size in pixels")
     ("small_label_size", po::value<float>(), "set small label size in pixels");
 }
+
+// Initialize the layout variables from Boost options
 
 void layout_initialize(const po::variables_map & vm)
 {
