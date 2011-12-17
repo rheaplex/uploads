@@ -29,7 +29,7 @@ namespace po = boost::program_options;
 
 #include "ofAppRunner.h"
 
-#include "layout_options.h"
+#include "layoutOptions.h"
 #include "layout.h"
 
 
@@ -37,8 +37,7 @@ namespace po = boost::program_options;
 // Configuration values
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace
-{
+namespace{
   // The screen (or window, or drawing area)
   
   float screen_width;
@@ -72,6 +71,10 @@ namespace
 
   // The bounds rectangles to render each eeg trace in
   std::vector<ofRectangle> eeg_bounds_rect;
+
+  // Colours
+  ofColor background;
+  ofColor foreground;
 }
 
 
@@ -79,31 +82,31 @@ namespace
 // Public layout functions
 ////////////////////////////////////////////////////////////////////////////////
 
-// Accessor
+// Accessors
 
-float label_size_small()
-{
+float label_size_small(){
   return small_label_size;
 }
 
-// Accessor
-
-float label_size_large()
-{
+float label_size_large(){
   return large_label_size;
 }
 
-// Accessor for the vertical padding between b-cells
-
-float eeg_padding_v()
-{
+float eeg_padding_v(){
   return b_cell_vertical_padding;
+}
+
+void background_colour(ofColor & col){
+  col = background;
+}
+
+void foreground_colour(ofColor & col){
+  col = foreground;
 }
 
 // Calculate the bounds of the a-cell for the face
 
-void calculate_face_bounds()
-{
+void calculate_face_bounds(){
   face_bounds_rect.x = outer_border_width;
   face_bounds_rect.y = outer_border_width;
   face_bounds_rect.width = ((screen_width / 3.0) * 2.0) - 
@@ -113,16 +116,14 @@ void calculate_face_bounds()
 
 // Accessor
 
-ofRectangle & face_bounds()
-{
+ofRectangle & face_bounds(){
   return face_bounds_rect;
 }
 
 // We could usefully cache many of the values this calculates for speed
 // But passing the count in here means we don't have to worry about setting it
 
-void calculate_eeg_bounds(int index, int count, ofRectangle & bounds)
-{ 
+void calculate_eeg_bounds(int index, int count, ofRectangle & bounds){ 
   float b_height = screen_height - (outer_border_width * 2.0);
   float cell_vertical_offset = b_height / count;
 
@@ -134,11 +135,9 @@ void calculate_eeg_bounds(int index, int count, ofRectangle & bounds)
 
 // Calculate the bounds for all the b-cells
 
-void calculate_eegs_bounds()
-{
+void calculate_eegs_bounds(){
   int count = (eeg_above - eeg_low) - 1;
-  for(int i = 0; i < count; i++)
-    {
+  for(int i = 0; i < count; i++){
       ofRectangle bounds;
       calculate_eeg_bounds(i, count, bounds);
       eeg_bounds_rect.push_back(bounds);
@@ -147,8 +146,7 @@ void calculate_eegs_bounds()
 
 // Accessor. Return the b cell for the given index
 
-ofRectangle & eeg_bounds(int index)
-{
+ofRectangle & eeg_bounds(int index){
   return eeg_bounds_rect[index];
 }
 
@@ -158,22 +156,39 @@ ofRectangle & eeg_bounds(int index)
 // (Which calls some earlier functions, and so comes last)
 ////////////////////////////////////////////////////////////////////////////////
 
+ofColor str2col(const std::string & colstr){
+  //FIXME: Should raise exception to be handled by requestor
+  if(colstr.size() != 6){
+    std::cerr << "Colour: " << colstr << 
+      " is the wrong length. Should be 6 hex digits" << std::endl;
+    exit(-1);
+  }
+  ofColor col;
+  //FIXME: handle out-of-range values
+  col.r = strtol(colstr.substr(0, 2).c_str(), NULL, 16);
+  col.g = strtol(colstr.substr(2, 2).c_str(), NULL, 16);
+  col.b = strtol(colstr.substr(4, 2).c_str(), NULL, 16);
+  return col;
+}
+
 // Describe the layout options to Boost
 
-void layout_add_options(po::options_description & desc)
-{
+void layout_add_options(po::options_description & desc){
   desc.add_options()
     ("outer_border", po::value<float>(), "set outer border in pixels")
     ("inner_border", po::value<float>(), "set inner border in pixels")
     ("eeg_padding", po::value<float>(), "set distance between eeg traces")
     ("large_label_size", po::value<float>(), "set large label size in pixels")
-    ("small_label_size", po::value<float>(), "set small label size in pixels");
+    ("small_label_size", po::value<float>(), "set small label size in pixels")
+    ("background", po::value<std::string>(),
+     "the background colour in RGB hex, e.g. 333333")
+    ("foreground", po::value<std::string>(),
+     "the foreground colour in RGB hex, e.g. FFFFFF");
 }
 
 // Initialize the layout variables from Boost options
 
-void layout_initialize(const po::variables_map & vm)
-{
+void layout_initialize(const po::variables_map & vm){
   if(vm.count("outer_border"))
     outer_border_width = vm["outer_border"].as<float>();
   if(vm.count("inner_border"))
@@ -186,6 +201,17 @@ void layout_initialize(const po::variables_map & vm)
     large_label_size = vm["large_label_size"].as<float>();
   if(vm.count("small_label_size"))
     small_label_size = vm["small_label_size"].as<float>();
+  if(vm.count("foreground"))
+    foreground = str2col(vm["foreground"].as<std::string>());
+  else
+    foreground = str2col("ffffff");
+  if(vm.count("background"))
+    background = str2col(vm["background"].as<std::string>());
+  else
+    background = str2col("333333");
+  
+  ofColor background;
+  ofColor foreground;
 
   screen_width = ofGetWidth();
   screen_height = ofGetHeight();

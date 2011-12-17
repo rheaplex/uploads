@@ -21,7 +21,10 @@
 
 #include <string>
 
-void start_twitter_search(const std::string & userpass);
+void twitter_add_options(po::options_description & desc);
+void twitter_initialize(const po::variables_map & vm);
+
+void start_twitter_search();
 void reset_twitter_emotion_map();
 void current_twitter_emotion(std::string & emotion);
 
