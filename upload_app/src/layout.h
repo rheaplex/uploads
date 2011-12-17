@@ -19,13 +19,19 @@
 #ifndef __LAYOUT_H__
 #define __LAYOUT_H__
 
+#include "ofColor.h"
+
 class ofRectangle;
 
 extern float label_size_small();
+
 extern float label_size_large();
 
 extern ofRectangle & eeg_bounds(int index);
 extern ofRectangle & face_bounds();
+
+extern void background_colour(ofColor & col);
+extern void foreground_colour(ofColor & col);
 
 #endif
 

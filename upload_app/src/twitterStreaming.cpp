@@ -16,7 +16,6 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-//TODO: Configure from Boost config. Especially the bounds
 
 ////////////////////////////////////////////////////////////////////////////////
 // includes
@@ -37,20 +36,29 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
 
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
+
 #include "emotion.h"
 
 #include "twitterStreaming.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Locations
+// Configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 // Location bounding boxes to check for tweets
 
-std::vector<std::string> locations = {"-122.75,36.8,-121.75,37.8",
-				      "-74,40,-73,41"};
+static std::string locations;
 
+// Any extra parameters
+
+static std::string extra;
+
+// Username and password
+
+static std::string userpass;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Twitter streaming search query url
@@ -63,15 +71,51 @@ const std::string streaming_request_base =
 
 // Make the url string for the streaming request
 
-std::string build_streaming_request()
-{
+std::string build_streaming_request(){
   std::string request;
   request = streaming_request_base;
   request += "?track=";
   request += boost::join(emotions, ",");
-  request += "&locations=";
-  request += boost::join(locations, ",");
+  if(locations != ""){
+    request += "&locations=";
+    request += locations;
+  }
+  if(extra != ""){
+    request += extra;
+  }
   return request;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Twitter configuration
+////////////////////////////////////////////////////////////////////////////////
+
+// Describe the options to Boost
+
+void twitter_add_options(po::options_description & desc){
+  desc.add_options()
+    ("twitter_auth", po::value<std::string>(),
+     "twitter username:password")
+    ("twitter_location", po::value<std::string>(),
+     "a twitter location spec, as a bounding box or boxes")
+    ("twitter_extra", po::value<std::string>(),
+     "any extra arguments for the Twitter streaming search");
+}
+
+// Initialize the variables from Boost options
+
+void twitter_initialize(const po::variables_map & vm){
+  if(vm.count("twitter_auth")){
+    userpass = vm["twitter_auth"].as<std::string>();
+  }else{
+    std::cerr << "Please specify -twitter_auth username:password" << std::endl;
+    ::exit(-1);
+  }
+  if(vm.count("twitter_location"))
+    locations = vm["twitter_location"].as<std::string>();
+  if(vm.count("twitter_extra"))
+    extra = vm["twitter_extra"].as<std::string>();
 }
 
 
@@ -89,11 +133,9 @@ emotion_map twitter_emotion_map;
 
 // Create an emotion map based on the list of emotions we are using
 
-emotion_map build_emotion_map()
-{
+emotion_map build_emotion_map(){
   emotion_map map;
-  BOOST_FOREACH(const std::string & emotion, emotions)
-  {
+  BOOST_FOREACH(const std::string & emotion, emotions){
     map[emotion] = 0;
   }
   return map;
@@ -101,12 +143,10 @@ emotion_map build_emotion_map()
 
 // Reset the main emotion map
 
-void reset_twitter_emotion_map()
-{
+void reset_twitter_emotion_map(){
   for(emotion_map::iterator i = twitter_emotion_map.begin();
       i != twitter_emotion_map.end();
-      ++i)
-  {
+      ++i){
     twitter_emotion_map[(*i).first] = 0;
   }
 }
@@ -114,15 +154,12 @@ void reset_twitter_emotion_map()
 // Scan the message body of the tweet for mention of emotions
 // This needs making more flexible (e.g. check for happy & happiness)
 
-void increment_emotions(emotion_map & emomap, const std::string & data)
-{
+void increment_emotions(emotion_map & emomap, const std::string & data){
   std::string lower_data(data);
   std::transform(lower_data.begin(), lower_data.end(), lower_data.begin(),
 		 ::tolower);
-  BOOST_FOREACH(const std::string & emotion, emotions)
-  {
-    if(lower_data.find(emotion) != std::string::npos)
-    {
+  BOOST_FOREACH(const std::string & emotion, emotions){
+    if(lower_data.find(emotion) != std::string::npos){
       emomap[emotion] = emomap[emotion] + 1;
     }
   }
@@ -130,10 +167,8 @@ void increment_emotions(emotion_map & emomap, const std::string & data)
 
 // Print the emotion map to a stream
 
-void dump_emotion_map(std::ostream & stream, emotion_map & emomap)
-{
-  BOOST_FOREACH(const std::string & emotion, emotions)
-  {
+void dump_emotion_map(std::ostream & stream, emotion_map & emomap){
+  BOOST_FOREACH(const std::string & emotion, emotions){
     stream << emotion << ": " << emomap[emotion] << " ";
   }
   stream << std::endl;
@@ -142,14 +177,11 @@ void dump_emotion_map(std::ostream & stream, emotion_map & emomap)
 // Get the highest emotion count name
 //FIXME: What about ties?
 
-void highest_emotion_count(emotion_map & emomap, std::string & emotion)
-{
+void highest_emotion_count(emotion_map & emomap, std::string & emotion){
   int max_count = -1;
   std::string max_name;
-  for(emotion_map::iterator i = emomap.begin(); i != emomap.end(); ++i)
-  {
-    if(static_cast<int>((*i).second) > max_count)
-    {
+  for(emotion_map::iterator i = emomap.begin(); i != emomap.end(); ++i){
+    if(static_cast<int>((*i).second) > max_count){
       max_name = (*i).first; 
       max_count = (*i).second;
     }
@@ -157,8 +189,7 @@ void highest_emotion_count(emotion_map & emomap, std::string & emotion)
   emotion = max_name;
 }
 
-void current_twitter_emotion(std::string & emotion)
-{
+void current_twitter_emotion(std::string & emotion){
   highest_emotion_count(twitter_emotion_map, emotion);
 }
 
@@ -169,8 +200,8 @@ void current_twitter_emotion(std::string & emotion)
 
 // The function called by curl when data is received from Twitter
 
-size_t curl_callback_fun(void * ptr, size_t size, size_t nmemb, void * userdata)
-{
+size_t curl_callback_fun(void * ptr, size_t size, size_t nmemb,
+			 void * userdata){
   size_t data_length = size * nmemb;
   std::string data(reinterpret_cast<char *>(ptr), data_length);
   //std::cout << data << std::endl;
@@ -191,12 +222,10 @@ pthread_t twitter_streaming_thread;
 
 // Run the Twitter streaming search using Curl
 
-void * run_streaming_search(void * user_pass)
-{
+void * run_streaming_search(void * user_pass){
   ::curl_global_init(CURL_GLOBAL_ALL);
   CURL * curl = ::curl_easy_init();
-  if(curl)
-  {
+  if(curl){
     std::string request = build_streaming_request();
     std::cout << request << std::endl;
     ::curl_easy_setopt(curl, CURLOPT_URL, request.c_str());
@@ -217,14 +246,12 @@ void * run_streaming_search(void * user_pass)
 
 // Create and run the streaming search thread
 
-void start_twitter_search(const std::string & userpass)
-{
+void start_twitter_search(){
   int result = ::pthread_create(&twitter_streaming_thread,
 				NULL,
 				run_streaming_search,
 				const_cast<char *>(userpass.c_str()));
-  if(result != 0)
-  {
+  if(result != 0){
     std::cerr << "Nonzero result from pthread_create: " << result << std::endl;
     ::exit(-1);
   }

@@ -25,46 +25,52 @@ namespace po = boost::program_options;
 #include "eeg.h"
 #include "emotion.h"
 #include "expression.h"
-#include "layout_options.h"
+#include "layout.h"
+#include "layoutOptions.h"
 #include "twitterStreaming.h"
 
 #include "mainApp.h"
 
 
-mainApp::mainApp(ofxArgs* args){
-  this->args = args;
+mainApp::mainApp(int argc, char * argv[]){
+  // Set up the arguments
+  po::options_description desc;
+  layout_add_options(desc);
+  twitter_add_options(desc);
+  desc.add_options()
+    ("data", po::value<std::string>(), "the path to the data directory");
+  // Parse the arguments
+  po::variables_map vm;
+  po::store(po::parse_command_line(argc, argv, desc), vm);
+  po::notify(vm);
+  layout_initialize(vm);
+  twitter_initialize(vm);
+  if(vm.count("data")){
+    this->data_path = vm["data"].as<std::string>();
+  }else{
+    std::cerr << "Please specify -data /path/to-data/directory" << std::endl;
+    ::exit(-1);
+  }
 }
 
 
 //--------------------------------------------------------------
 void mainApp::setup(){
-  po::variables_map vm;
-  layout_initialize(vm);
-
-  if(this->args->contains("-data")){
-    this->data_path = this->args->getString("-data");
-  }else{
-    std::cerr << "Please specify -data /path/to-data/directory" << std::endl;
-    ::exit(-1);
-  }
-
+  // Load data from the specified
   load_emotions(this->data_path);
   load_expressions(this->data_path);
 
-  std::string twitter_userpass;
-  if(this->args->contains("-twitter")){
-    twitter_userpass = this->args->getString("-twitter");
-  }else{
-    std::cerr << "Please specify -twitter username:password" << std::endl;
-    ::exit(-1);
-  }
-
+  // Set the window properties
   ofSetWindowTitle("upload");
   ofSetFrameRate(60);
-
   ofSetFullscreen(true);
 
-  start_twitter_search(twitter_userpass);
+  // Set the background colour
+  ofColor col;
+  background_colour(col);
+  ofBackground(col.r, col.g, col.b);
+
+  start_twitter_search();
 } 
 
 

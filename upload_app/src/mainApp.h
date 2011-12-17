@@ -22,12 +22,11 @@
 #include <string>
 
 #include "ofMain.h"
-#include "ofxArgs.h"
 
 class mainApp : public ofBaseApp
 {  
  public:
-  mainApp(ofxArgs* args);
+  mainApp(int argc, char * argv[]);
   void setup();
   void update();
   void draw();
@@ -44,7 +43,6 @@ class mainApp : public ofBaseApp
   bool	bSmooth;
   
  private:
-  ofxArgs*    args;
   std::string data_path;
   std::string emotion;
   double      now;
