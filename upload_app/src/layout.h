@@ -33,5 +33,8 @@ extern ofRectangle & face_bounds();
 extern void background_colour(ofColor & col);
 extern void foreground_colour(ofColor & col);
 
+float eeg_line_width();
+float frame_line_width();
+
 #endif
 

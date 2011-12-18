@@ -56,10 +56,8 @@
 // the first as time 0.0
 
 template<class T>
-void normalize_timestamps(T & values, double base)
-{
-  for(typename T::iterator i = values.begin(); i < values.end(); ++i)
-  {
+void normalize_timestamps(T & values, double base){
+  for(typename T::iterator i = values.begin(); i < values.end(); ++i){
     (*i).timestamp = (*i).timestamp - base;
   }
 }
@@ -69,11 +67,9 @@ void normalize_timestamps(T & values, double base)
 // EEG Power Levels
 ////////////////////////////////////////////////////////////////////////////////
 
-struct power_levels
-{
+struct power_levels {
   // The indexes in the values
-  enum
-    {
+  enum {
       poor_signal_level=0,
       low_alpha,
       high_alpha,
@@ -83,7 +79,7 @@ struct power_levels
       high_gamma,
       attention,
       meditation
-      };
+  };
 
   double timestamp;
 
@@ -108,8 +104,7 @@ const power_levels dummy_power_levels = {0.0, {0,0,0,0,0,0,0,0,0}};
 
 // Create a power_levels object from the values in a line of data
 
-void line_to_levels(const std::string & line, power_levels & levels)
-{
+void line_to_levels(const std::string & line, power_levels & levels){
   std::vector<std::string> fields;
   boost::split(fields, line, boost::is_any_of("\t"));
   levels.timestamp = ::atof(fields[0].c_str());
@@ -124,25 +119,20 @@ void line_to_levels(const std::string & line, power_levels & levels)
 // Slurp power_levels from a tsv file into a vector
 
 void slurp_power_levels(const std::string & file,
-			power_levels_vector & levels_vector)
-{
+			power_levels_vector & levels_vector){
   std::ifstream source(file);
-  if(!source.is_open())
-  {
+  if(!source.is_open()){
     throw std::runtime_error("Couldn't open file " + file);
   }
-  while(source)
-  {
+  while(source){
     std::string line;
     std::getline(source, line);
     // Skip comments
-    if(line.length() > 0 && line[0] == '#')
-    {
+    if(line.length() > 0 && line[0] == '#'){
       continue;
     }
     // We get an empty line at the end???
-    if(line.length() == 0)
-    {
+    if(line.length() == 0){
       break;
     }
     power_levels levels;
@@ -156,8 +146,7 @@ void slurp_power_levels(const std::string & file,
 // Raw EEG data
 ////////////////////////////////////////////////////////////////////////////////
 
-struct raw_eeg
-{
+struct raw_eeg {
   double timestamp;
   int value;
 };
@@ -171,13 +160,12 @@ const raw_eeg dummy_raw_eeg = {0.0, 0};
 
 // Slurp raw eeg data from a tsv file into a vector
 
-void slurp_raw_eeg(const std::string & file, raw_eeg_vector & eeg_vector)
-{
+void slurp_raw_eeg(const std::string & file, raw_eeg_vector & eeg_vector){
   std::ifstream source(file);
-  if(!source.is_open())
+  if(!source.is_open()){
     throw std::runtime_error("Couldn't open file " + file);
-  while(source)
-  {
+  }
+  while(source){
     std::string line;
     std::getline(source, line);
     // Skip comments
@@ -199,8 +187,7 @@ void slurp_raw_eeg(const std::string & file, raw_eeg_vector & eeg_vector)
 //  we should get: LeeeeeeeLeeeeeLeeeeeL
 
 void truncate_eeg_to_levels_timestamps(raw_eeg_vector & eeg, 
-				       power_levels_vector & levels)
-{
+				       power_levels_vector & levels){
   double levels_begin = levels.front().timestamp;
   double levels_end = levels.back().timestamp;
   // incredibly inefficient. find_if & rbegin then truncate isn't happy on gcc4
@@ -219,8 +206,7 @@ void truncate_eeg_to_levels_timestamps(raw_eeg_vector & eeg,
 
 // The data for an emotion
 
-struct emotion_data
-{
+struct emotion_data {
   std::string name;
   raw_eeg_vector raw_eeg;
   power_levels_vector power_levels;
@@ -244,8 +230,7 @@ const std::string POWER_LEVELS_FILENAME("power_levels.txt");
 
 std::string emotion_file(const std::string & user_name,
 			 const std::string & emotion,
-			 const std::string & data_file)
-{
+			 const std::string & data_file){
   return user_name + "/" + emotion + "/" + data_file;
 }
 
@@ -253,8 +238,7 @@ std::string emotion_file(const std::string & user_name,
 
 void load_emotion_raw_eeg_data(const std::string & user_name,
 			       const std::string & emotion,
-			       raw_eeg_vector & eeg_vector)
-{
+			       raw_eeg_vector & eeg_vector){
   slurp_raw_eeg(emotion_file(user_name, emotion, RAW_EEG_FILENAME),
 		eeg_vector);
 }
@@ -263,18 +247,15 @@ void load_emotion_raw_eeg_data(const std::string & user_name,
 
 void load_emotion_power_levels_data(const std::string & user_name,
 				    const std::string & emotion,
-				    power_levels_vector & levels_vector)
-{
+				    power_levels_vector & levels_vector){
   slurp_power_levels(emotion_file(user_name, emotion, POWER_LEVELS_FILENAME),
 		     levels_vector);
 }
 
 // Load all the user's emotion data files from each emotion folder
 
-void load_emotions(const std::string & username)
-{
-  BOOST_FOREACH(const std::string & emotion, emotions)
-  {
+void load_emotions(const std::string & username){
+  BOOST_FOREACH(const std::string & emotion, emotions){
     emotion_data data;
     data.name = emotion;
     load_emotion_power_levels_data(username, emotion, data.power_levels);
@@ -323,11 +304,9 @@ std::deque<raw_eeg> eeg_display_data(eeg_to_display, dummy_raw_eeg);
 // Used in initialization and when the current emotion is changed
 
 template<class T>
-typename T::iterator set_current_iterator(float current_time_mod, T & source)
-{
+typename T::iterator set_current_iterator(float current_time_mod, T & source){
   typename T::iterator iter = source.begin();
-  while((*iter).timestamp < current_time_mod)
-  {
+  while((*iter).timestamp < current_time_mod){
     ++iter;
   }
   return iter;
@@ -343,25 +322,21 @@ void update_data_vector(double now_mod,
 			double previous_mod,
 			T & source,
 			U & destination,
-			typename T::iterator & iter)
-{
+			typename T::iterator & iter){
   // If we've wrapped round
   // In pathalogical cases of system delay we will miss multiple passes
   //  if that happens there are probably worse things to worry about
   //  and the code won't fail, it
-  if(now_mod < previous_mod)
-  { 
+  if(now_mod < previous_mod){ 
     // Push the remaining values
-    for(; iter != source.end(); ++iter)
-    {
+    for(; iter != source.end(); ++iter){
       destination.push_front(*iter);
     }
     // and wrap round
     iter = source.begin();
   }
   // Whether we looped or not, keep pushing values until we hit the current time
-  while(iter->timestamp <= now_mod)
-  {
+  while(iter->timestamp <= now_mod){
     // Push the new value
     destination.push_front(*iter);
     // Move on to the next data item
@@ -380,8 +355,7 @@ std::string previous_emotion = "";
 
 // Get the current time in the range 0..max_timestamp
 
-static double mod_time(emotion_data & data, double now)
-{
+static double mod_time(emotion_data & data, double now){
   return std::fmod(now, data.max_levels_time);
 }
 
@@ -390,22 +364,19 @@ static double mod_time(emotion_data & data, double now)
 //  then truncate the display data if too long
 // note that our use of globals makes this non-threadsafe
 
-void update_eegs(const std::string & emotion, double raw_time)
-{
+void update_eegs(const std::string & emotion, double raw_time){
   // Handle being called before Twitter streaming has started
-  if(emotion == "")
-    {
-      return;
-    }
-  if(emotion != previous_emotion)
-    {
-      current_emotion_data = emotion_datas[emotion];
-      current_eeg_iterator =
-	set_current_iterator(last_update_at, current_emotion_data.raw_eeg);
-      current_levels_iterator =
-	set_current_iterator(last_update_at,current_emotion_data.power_levels);
-      previous_emotion = emotion;
-    }
+  if(emotion == ""){
+    return;
+  }
+  if(emotion != previous_emotion){
+    current_emotion_data = emotion_datas[emotion];
+    current_eeg_iterator =
+      set_current_iterator(last_update_at, current_emotion_data.raw_eeg);
+    current_levels_iterator =
+      set_current_iterator(last_update_at,current_emotion_data.power_levels);
+    previous_emotion = emotion;
+  }
   double current_update_at = mod_time(current_emotion_data, raw_time);
   // Push new data
   update_data_vector(current_update_at, last_update_at,
@@ -444,37 +415,29 @@ std::string raw_label("Raw EEG");
 
 // Draw the frame for a wave plot
 
-void frame_wave(int index)
-{
+void frame_wave(int index){
   ofRectangle & frame = eeg_bounds(index);
-  ofNoFill();
-  ofSetHexColor(0xFFFFFF);
   ofRect(frame.x, frame.y, frame.width, frame.height);
 }
 
 // Plot a waveform
 
 void draw_wave(int index, size_t count,
-	      double (*accessor)(int index, size_t i))
-{
+	      double (*accessor)(int index, size_t i)){
   ofRectangle & frame = eeg_bounds(index);
   float step = frame.width / (count - 1);
   float x = frame.x;
-  ofNoFill();
-  ofSetHexColor(0xFFFFFF);
   ofBeginShape();
-  for(size_t i = 0; i < count; i++)
-    {
-      // Subtract value from 1.0 so 0 is at the bottom of the drawing area
-      float y = frame.y + (frame.height * (1.0 - accessor(index, i)));
-      ofVertex(x, y);
-      x += step;
-    }
+  for(size_t i = 0; i < count; i++){
+    // Subtract value from 1.0 so 0 is at the bottom of the drawing area
+    float y = frame.y + (frame.height * (1.0 - accessor(index, i)));
+    ofVertex(x, y);
+    x += step;
+  }
   ofEndShape();
 }
 
-void draw_label(int index, std::string & label)
-{
+void draw_label(int index, std::string & label){
   ofRectangle & frame = eeg_bounds(index);
   ofDrawBitmapString(label, frame.x,
 		     frame.y + frame.height + label_size_small());
@@ -482,27 +445,30 @@ void draw_label(int index, std::string & label)
 
 // Draw the raw eeg and the primary processed values
 
-void draw_eegs()
-{  
+void draw_eegs(){
+  // Common graphics state setup
   ofEnableSmoothing();
-  ofSetLineWidth(2.0);
-  for(int i = 0; i < EEG_COUNT; i++)
-  {
+  ofNoFill();
+  ofColor fore;
+  foreground_colour(fore);
+  ofSetColor(fore);
+  // Graphics state for frames
+  ofSetLineWidth(frame_line_width());
+  for(int i = 0; i < EEG_COUNT; i++){
       frame_wave(i);
   }
+  // Graphics state for eeg traces
+  ofSetLineWidth(eeg_line_width());
   // Draw the raw values separately
   draw_label(0, raw_label);
   draw_wave(0, eeg_display_data.size(),
 	    [](int index, size_t i){
 	      return eeg_scale * (eeg_display_data[i].value - eeg_min);});
-  
-  for(int i = 1; i < EEG_COUNT; i++)
-  {
+  // Draw the calculated values
+  for(int i = 1; i < EEG_COUNT; i++){
     draw_label(i, values_names[i + EEG_LOW - 1]);
   }
-
-  for(int i = EEG_LOW; i < EEG_ABOVE; i++)
-  {
+  for(int i = EEG_LOW; i < EEG_ABOVE; i++){
     draw_wave(i - EEG_LOW, levels_display_data.size(),
 	      [](int index, size_t i){
 		return levels_scale * levels_display_data[i].values[index];});
