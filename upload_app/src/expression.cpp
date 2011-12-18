@@ -83,15 +83,13 @@ static const float VOXEL_SIZE = 5.0;
 // Load the lines of a gzipped text file into a vector of strings
 
 void slurp_gzipped_lines(const std::string & path,
-			 std::vector<std::string> & lines)
-{
+			 std::vector<std::string> & lines){
   std::ifstream file(path);//, ios_base::in | ios_base::binary);
   boost::iostreams::filtering_stream<boost::iostreams::input> in;
   in.push(boost::iostreams::gzip_decompressor());
   in.push(file);
   std::string line;
-  while(std::getline(in, line))
-  {
+  while(std::getline(in, line)){
     lines.push_back(line);
   }
 }
@@ -100,19 +98,16 @@ void slurp_gzipped_lines(const std::string & path,
 
 size_t slurp_gzipped_csv_floats(boost::shared_array<float> & values,
 				const std::string & path,
-				int stride)
-{
+				int stride){
   std::vector<std::string> lines;
   slurp_gzipped_lines(path, lines);
   values = boost::shared_array<float>(new float[lines.size() * stride]);
   typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
   boost::char_separator<char> sep("\t");
-  for(size_t i = 0; i < lines.size(); i++)
-  {
+  for(size_t i = 0; i < lines.size(); i++){
     tokenizer::iterator tokens = tokenizer(lines[i], sep).begin();
     int index = i * stride;
-    for(int j = 0; j < stride; j++)
-    {
+    for(int j = 0; j < stride; j++){
       values[index + j] = std::atof((*tokens).c_str());
       tokens++;
     }
@@ -127,8 +122,7 @@ size_t slurp_gzipped_csv_floats(boost::shared_array<float> & values,
 
 // A frame of Kinect data
 
-class Frame
-{
+class Frame {
 public:
   Frame();
   Frame(const boost::filesystem::path & path_root, double when_base);
@@ -154,15 +148,13 @@ std::map<std::string, std::vector<Frame> > expression_frames;
 
 // Basic constructor. For STL containers.
 
-Frame::Frame()
-{
+Frame::Frame(){
 }
 
 // Constructor. Load the frame from the path
 // And make its timestamp relative to the first frame
 
-Frame::Frame(const boost::filesystem::path & path_root, double when_base)
-{
+Frame::Frame(const boost::filesystem::path & path_root, double when_base){
   // The path is of the format /a/b/c/2346.12
   when = std::atof(path_root.filename().c_str()) - when_base;
   // Load the texture map
@@ -176,8 +168,7 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base)
 						     path_root.string() + ".uv",
 						     2);
   // Move this to a non-debug check
-  if(num_coords != other_num_coords)
-  {
+  if(num_coords != other_num_coords){
     throw "Coord count mismatch";
   }
   // Get the closest maximal distance to the y origin above or below it
@@ -187,13 +178,11 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base)
   // Scale the points to window co-ordinates
   ofRectangle fb = face_bounds();
   float scale = (fb.height / smallest_y_max) / 2.0;
-  for(size_t i = 0; i < num_coords; i++)
-  {
+  for(size_t i = 0; i < num_coords; i++){
     float * point = xyz.get() + (i * 3);
     // Z Clip here rather than during rendering
     // Note that we compare abs(x) to max y to make the mesh roughly square
-    if((point[2] < REAR_CLIP) || (std::abs(point[1]) > smallest_y_max))
-    {
+    if((point[2] < REAR_CLIP) || (std::abs(point[1]) > smallest_y_max)){
       float * tex = uv.get() + (i * 2);
       // Flip the Vs. rgb.height is zero at this point(!), so use the constant
       mesh.addTexCoord(ofVec2f(tex[0], TEXTURE_HEIGHT - tex[1]));
@@ -204,28 +193,23 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base)
 
 // Destructor
 
-Frame::~Frame()
-{
+Frame::~Frame(){
 }
 
 // Calculate the smallest maximum value above or below the y origin
 // e.g. if the range of y values is -1.23..4.56, this returns 1.23
 
 void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
-				     size_t coord_count)
-{
+				     size_t coord_count){
   // The lowest negative value. So min neg, but you get the idea...
   float max_neg = 0.0;
   float max_pos = 0.0;
-  for(size_t i = 0; i < coord_count; i++)
-  {
+  for(size_t i = 0; i < coord_count; i++){
     double y = xyz[(3 * i) + 1];
-    if(y > max_pos)
-    {
+    if(y > max_pos){
       max_pos = y;
     }
-    else if(y < max_neg)
-    {
+    else if(y < max_neg){
       max_neg = y;
     }
   }
@@ -234,8 +218,7 @@ void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
 
 // Render the frame
 
-void Frame::render(float rotation[3])
-{
+void Frame::render(float rotation[3]){
   ofRectangle fb = face_bounds();
   glPointSize(VOXEL_SIZE);
   ofPushMatrix();
@@ -263,17 +246,14 @@ void Frame::render(float rotation[3])
 
 // Predicate to check whether a file path is a png file (or at least ends .png)
 
-bool is_png_file(const boost::filesystem::directory_iterator & i)
-{
+bool is_png_file(const boost::filesystem::directory_iterator & i){
   static boost::regex png_filter( ".*\\.png" );
   bool is = true;
-  if(! boost::filesystem::is_regular_file(i->status()))
-  {
+  if(! boost::filesystem::is_regular_file(i->status())){
     is = false;
   }
   boost::smatch what;
-  if(! boost::regex_match(i->leaf(), what, png_filter))
-  {
+  if(! boost::regex_match(i->leaf(), what, png_filter)){
       is = false;
   }
   return is;
@@ -282,25 +262,21 @@ bool is_png_file(const boost::filesystem::directory_iterator & i)
 // Load all the frames for an emotion directory into a vector of Frame objects
 
 void load_expression(const std::string & emotion_dir,
-		     std::vector<Frame> & frames)
-{
+		     std::vector<Frame> & frames){
   std::cerr << emotion_dir << std::endl;
   boost::filesystem::directory_iterator end;
   boost::filesystem::directory_iterator i(emotion_dir);
   double when_base = -1.0;
   // Load each frame
-  for(; i != end; ++i )
-  {
+  for(; i != end; ++i ){
     // use .pngs as the indicators of times. alphabetically they're first
-    if (is_png_file(i))
-    {
+    if (is_png_file(i)){
       // Strip the .png extention to get a base /path/time.stamp
       boost::filesystem::path path(i->path());
       path.replace_extension("");
       std::cerr << path.string() << std::endl;
       // We need to set the base timestamp from the first png filename
-      if(when_base == -1.0)
-      {
+      if(when_base == -1.0){
 	when_base = std::atof(path.filename().c_str());
       }
       Frame frame(path, when_base);
@@ -313,11 +289,9 @@ void load_expression(const std::string & emotion_dir,
 // Each frame on disk has the name format "seconds.fraction.png",
 // with.xyz and .uv files accompanying it
 
-void load_expressions(const std::string & person_dir)
-{
+void load_expressions(const std::string & person_dir){
   for(std::vector<std::string>::const_iterator i = emotions.begin();
-      i != emotions.end(); ++i)
-  {
+      i != emotions.end(); ++i){
     std::vector<Frame> frames;
     load_expression(person_dir + "/" + *i, frames);
     expression_frames[*i] = frames;
@@ -337,32 +311,27 @@ float rotation[] = {0.0, 0.0, 0.0};
 
 // C++ really doesn't have a float pseudo-random number generator
 
-float frand()
-{
+float frand(){
   return ((float)random()) / (float)RAND_MAX;
 }
 
 // Drift one rotation by up to the drifr amount, clamping it to the max rotation
 
-void update_one_rotation(float &rotation)
-{
+void update_one_rotation(float &rotation){
   float delta = frand() * ROTATION_DRIFT;
   // Half the time the amount is positive, half the time it's negative
-  if(frand() > 0.5)
-  {
+  if(frand() > 0.5){
     delta = - delta;
   }
   float new_rotation = rotation + delta;
-  if(std::fabs(new_rotation) <= MAX_ROTATION_DRIFT)
-  {
+  if(std::fabs(new_rotation) <= MAX_ROTATION_DRIFT){
     rotation = new_rotation;
   }
 }
 
 // Drift the rotation of the frame around the origin
 
-void update_rotation()
-{
+void update_rotation(){
   update_one_rotation(rotation[0]);
   update_one_rotation(rotation[1]);
   update_one_rotation(rotation[2]);
@@ -370,14 +339,12 @@ void update_rotation()
 
 // Set the frame to be rendered from the current emotion at the current time
 
-void update_expression(const std::string & emotion, double now)
-{
+void update_expression(const std::string & emotion, double now){
   update_rotation();
   // Make sure the value is in range
   double now_mod = std::fmod(now, expression_frames[emotion].rbegin()->when);
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();
-  while(i->when < now_mod)
-  {
+  while(i->when < now_mod){
     ++i;
   }
   current_frame = *i;
@@ -390,10 +357,10 @@ void update_expression(const std::string & emotion, double now)
 
 // Render the current frame in its bounds rectangle in the layout
 
-void draw_expression()
-{
+void draw_expression(){
+  current_frame.render(rotation);
+  // Frame the render (overpainting any stray voxel edges)
   ofRectangle bounds = face_bounds();
   ofNoFill();
   ofRect(bounds);
-  current_frame.render(rotation);
 }
