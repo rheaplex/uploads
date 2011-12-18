@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -65,7 +66,6 @@ static std::string userpass;
 ////////////////////////////////////////////////////////////////////////////////
 
 // The basic streaming request url, which we add parameters to
-
 const std::string streaming_request_base = 
   "https://stream.twitter.com/1/statuses/filter.json";
 
@@ -121,6 +121,7 @@ void twitter_initialize(const po::variables_map & vm){
 
 ////////////////////////////////////////////////////////////////////////////////
 // Emotion counts
+// We 
 ////////////////////////////////////////////////////////////////////////////////
 
 // A map to keep track of emotion word occurrence counts
@@ -252,7 +253,8 @@ void start_twitter_search(){
 				run_streaming_search,
 				const_cast<char *>(userpass.c_str()));
   if(result != 0){
-    std::cerr << "Nonzero result from pthread_create: " << result << std::endl;
-    ::exit(-1);
+    std::stringstream str;
+    str << "Nonzero result from pthread_create: " << result;
+    throw str.str();
   }
 }
