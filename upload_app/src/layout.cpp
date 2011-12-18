@@ -119,6 +119,21 @@ float frame_line_width(){
   return line_width_frame;
 }
 
+ofRectangle & face_bounds(){
+  return face_bounds_rect;
+}
+
+ofRectangle & eeg_bounds(int index){
+  return eeg_bounds_rect[index];
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Configuration
+// Get values from command-line options
+// And calculate layout
+////////////////////////////////////////////////////////////////////////////////
+
 // Calculate the bounds of the a-cell for the face
 
 void calculate_face_bounds(){
@@ -126,14 +141,8 @@ void calculate_face_bounds(){
   face_bounds_rect.y = outer_border_width;
   face_bounds_rect.width =
     ((screen_width / (float)h_cells_count) * (float)h_cells_face) - 
-    (outer_border_width + inner_border_width);
+    (inner_border_width);
   face_bounds_rect.height = screen_height - (outer_border_width * 2.0);
-}
-
-// Accessor
-
-ofRectangle & face_bounds(){
-  return face_bounds_rect;
 }
 
 // We could usefully cache many of the values this calculates for speed
@@ -144,7 +153,7 @@ void calculate_eeg_bounds(int index, int count, ofRectangle & bounds){
   float b_height = screen_height - (outer_border_width * 2.0);
   float cell_vertical_offset = b_height / count;
 
-  bounds.x = screen_width - b_width + inner_border_width;
+  bounds.x = screen_width + inner_border_width - b_width;
   bounds.y = outer_border_width + (cell_vertical_offset * index);
   bounds.width = b_width - (outer_border_width + inner_border_width);
   bounds.height = cell_vertical_offset - inner_border_width;
@@ -161,17 +170,7 @@ void calculate_eegs_bounds(){
     }
 }
 
-// Accessor. Return the b cell for the given index
-
-ofRectangle & eeg_bounds(int index){
-  return eeg_bounds_rect[index];
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Configuration
-// (Which calls some earlier functions, and so comes last)
-////////////////////////////////////////////////////////////////////////////////
+// Parse a colour from a string
 
 ofColor str2col(const std::string & colstr){
   //FIXME: Should raise exception to be handled by requestor

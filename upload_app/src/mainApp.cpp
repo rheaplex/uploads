@@ -31,7 +31,7 @@ namespace po = boost::program_options;
 
 #include "mainApp.h"
 
-
+//--------------------------------------------------------------
 mainApp::mainApp(int argc, char * argv[]):
   previousEmotionReset(ofGetElapsedTimef()){
   // Set up the arguments
@@ -41,6 +41,7 @@ mainApp::mainApp(int argc, char * argv[]):
   expression_add_options(desc);
   desc.add_options()
     ("data", po::value<std::string>(), "the path to the data directory");
+
   // Parse the arguments
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -48,11 +49,12 @@ mainApp::mainApp(int argc, char * argv[]):
   layout_initialize(vm);
   twitter_initialize(vm);
   expression_initialize(vm);
+
+  // Make sure we have the data path
   if(vm.count("data")){
     this->data_path = vm["data"].as<std::string>();
   }else{
-    std::cerr << "Please specify -data /path/to-data/directory" << std::endl;
-    ::exit(-1);
+    throw "Please specify -data /path/to-data/directory";
   }
 }
 

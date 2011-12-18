@@ -23,8 +23,7 @@
 
 #include "ofMain.h"
 
-class mainApp : public ofBaseApp
-{  
+class mainApp : public ofBaseApp {  
  public:
   mainApp(int argc, char * argv[]);
   void setup();
