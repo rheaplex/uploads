@@ -67,8 +67,8 @@ static const int TEXTURE_HEIGHT = 480;
 
 // How the voxel render rotation drifts over time
 // In degrees
-static const float ROTATION_DRIFT = 0.1f;
-static const float MAX_ROTATION_DRIFT = 36.0f;
+static float rotation_drift = 0.5f;
+static float max_rotation_drift = 36.0f;
 static float rotation_update_frequency = 0.2;
 
 // The rear clipping plane distance in metres
@@ -82,6 +82,12 @@ static float voxel_size = 5.0;
 void expression_add_options(po::options_description & desc){
   desc.add_options()
     ("rear_clip", po::value<float>(), "distance to rear clipping pane (metres)")
+    ("rotation_drift", po::value<float>(),
+     "how much (+/-) to update rotation each time")
+    ("rotation_max", po::value<float>(),
+     "the maximum (+/-) rotation in degrees")
+    ("rotation_time", po::value<float>(),
+     "how often to update rotation, in seconds")
     ("voxel_size", po::value<float>(), "voxel size in pixels");
 }
 
@@ -90,6 +96,12 @@ void expression_add_options(po::options_description & desc){
 void expression_initialize(const po::variables_map & vm){
   if(vm.count("rear_clip"))
     rear_clip = vm["rear_clip"].as<float>();
+  if(vm.count("rotation_drift"))
+    rotation_drift = vm["rear_clip"].as<float>();
+  if(vm.count("rotation_max"))
+    max_rotation_drift = vm["rotation_max"].as<float>();
+  if(vm.count("rear_clip"))
+    rotation_update_frequency = vm["roration_time"].as<float>();
   if(vm.count("voxel_size"))
     voxel_size = vm["voxel_size"].as<float>();
 }
@@ -337,13 +349,13 @@ float frand(){
 // Drift one rotation by up to the drifr amount, clamping it to the max rotation
 
 void update_one_rotation(float &rotation){
-  float delta = frand() * ROTATION_DRIFT;
+  float delta = frand() * rotation_drift;
   // Half the time the amount is positive, half the time it's negative
   if(frand() > 0.5){
     delta = - delta;
   }
   float new_rotation = rotation + delta;
-  if(std::fabs(new_rotation) <= MAX_ROTATION_DRIFT){
+  if(std::fabs(new_rotation) <= max_rotation_drift){
     rotation = new_rotation;
   }
 }
