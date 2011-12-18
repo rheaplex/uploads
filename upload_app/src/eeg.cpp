@@ -411,7 +411,7 @@ static const double levels_scale = 1.0 / (levels_max - levels_min);
 
 // The label for the Raw EEG plot
 
-std::string raw_label("Raw EEG");
+std::string raw_label("raw eeg");
 
 // Draw the frame for a wave plot
 

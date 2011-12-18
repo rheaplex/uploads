@@ -32,11 +32,13 @@ namespace po = boost::program_options;
 #include "mainApp.h"
 
 
-mainApp::mainApp(int argc, char * argv[]){
+mainApp::mainApp(int argc, char * argv[]):
+  previousEmotionReset(ofGetElapsedTimef()){
   // Set up the arguments
   po::options_description desc;
   layout_add_options(desc);
   twitter_add_options(desc);
+  expression_add_options(desc);
   desc.add_options()
     ("data", po::value<std::string>(), "the path to the data directory");
   // Parse the arguments
@@ -45,6 +47,7 @@ mainApp::mainApp(int argc, char * argv[]){
   po::notify(vm);
   layout_initialize(vm);
   twitter_initialize(vm);
+  expression_initialize(vm);
   if(vm.count("data")){
     this->data_path = vm["data"].as<std::string>();
   }else{
@@ -64,12 +67,14 @@ void mainApp::setup(){
   ofSetWindowTitle("upload");
   ofSetFrameRate(60);
   ofSetFullscreen(true);
+  ofHideCursor();
 
   // Set the background colour
   ofColor col;
   background_colour(col);
   ofBackground(col.r, col.g, col.b);
 
+  // Start the twitter search thread to drive the emotion state
   start_twitter_search();
 } 
 
@@ -77,9 +82,7 @@ void mainApp::setup(){
 //--------------------------------------------------------------
 void mainApp::update(){
   // Get the current time
-  timeval tv;
-  ::gettimeofday(&tv, NULL);
-  now = tv.tv_sec + (tv.tv_usec/1000000.0);
+  now = ofGetElapsedTimef();
 
   // Find out what the current dominant emotion is
   current_twitter_emotion(emotion);
@@ -90,13 +93,12 @@ void mainApp::update(){
   }
 
   // Reset the emotion map every so often
-  static int count = 0;
-  count++;
-  if (count == 1000){
+  if (now - previousEmotionReset >= 10){
     reset_twitter_emotion_map();
-    count = 0;
+    previousEmotionReset = 0;
   }
 
+  // Update the eeg and expression state based on the current emotion and time
   update_eegs(emotion, now);
   update_expression(emotion, now);
 }

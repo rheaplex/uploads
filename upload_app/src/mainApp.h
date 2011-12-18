@@ -46,6 +46,7 @@ class mainApp : public ofBaseApp
   std::string data_path;
   std::string emotion;
   double      now;
+  float       previousEmotionReset;
 };
 
 #endif

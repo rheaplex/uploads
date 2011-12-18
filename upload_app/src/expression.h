@@ -20,6 +20,8 @@
 #ifndef __EXPRESSION_H__
 #define __EXPRESSION_H__
 
+void expression_add_options(po::options_description & desc);
+void expression_initialize(const po::variables_map & vm);
 void load_expressions(const std::string & person_dir);
 void update_expression(const std::string & emotion, double now);
 void draw_expression();

@@ -40,6 +40,9 @@
 #include <boost/shared_array.hpp>
 #include <boost/tokenizer.hpp>
 
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
+
 #include "ofAppRunner.h"
 #include "ofGraphics.h"
 #include "ofImage.h"
@@ -65,15 +68,31 @@ static const int TEXTURE_HEIGHT = 480;
 // How the voxel render rotation drifts over time
 // In degrees
 static const float ROTATION_DRIFT = 0.1f;
-static const float MAX_ROTATION_DRIFT = 10.0f;
-
-static const GLclampf CLEAR_COLOUR[4] = {0, 0, 0, 0};
+static const float MAX_ROTATION_DRIFT = 36.0f;
+static float rotation_update_frequency = 0.2;
 
 // The rear clipping plane distance in metres
-static const float REAR_CLIP = 3.0;
+static float rear_clip = 3.0;
 
 // The size of the squares for the voxel render
-static const float VOXEL_SIZE = 5.0;
+static float voxel_size = 5.0;
+
+// Describe the options to Boost
+
+void expression_add_options(po::options_description & desc){
+  desc.add_options()
+    ("rear_clip", po::value<float>(), "distance to rear clipping pane (metres)")
+    ("voxel_size", po::value<float>(), "voxel size in pixels");
+}
+
+// Initialize the variables from Boost options
+
+void expression_initialize(const po::variables_map & vm){
+  if(vm.count("rear_clip"))
+    rear_clip = vm["rear_clip"].as<float>();
+  if(vm.count("voxel_size"))
+    voxel_size = vm["voxel_size"].as<float>();
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,9 +201,9 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base){
     float * point = xyz.get() + (i * 3);
     // Z Clip here rather than during rendering
     // Note that we compare abs(x) to max y to make the mesh roughly square
-    if((point[2] < REAR_CLIP) || (std::abs(point[1]) > smallest_y_max)){
+    if((point[2] < rear_clip) || (std::abs(point[1]) > smallest_y_max)){ // 
       float * tex = uv.get() + (i * 2);
-      // Flip the Vs. rgb.height is zero at this point(!), so use the constant
+      // Flip the Vs: rgb.height is zero at this point(!), so use the constant
       mesh.addTexCoord(ofVec2f(tex[0], TEXTURE_HEIGHT - tex[1]));
       mesh.addVertex(ofVec3f(point[0] * scale, point[1] * scale, point[2]));
     }
@@ -220,17 +239,17 @@ void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
 
 void Frame::render(float rotation[3]){
   ofRectangle fb = face_bounds();
-  glPointSize(VOXEL_SIZE);
+  glPointSize(voxel_size);
   ofPushMatrix();
+  // Clip to the face drawing area
+  glEnable(GL_SCISSOR_TEST);
+  glScissor(fb.x, fb.y, fb.width, fb.height);
   // Centre drawing on the face area
   ofTranslate((fb.x + (fb.width / 2.0)), (fb.y + (fb.height / 2.0)), 0.0);
   ofRotateX(rotation[0]);
   ofRotateY(rotation[1]);
   ofRotateZ(rotation[2]);
   glEnable(GL_DEPTH_TEST);
-  // Clip to the face drawing area
-  glEnable(GL_SCISSOR_TEST);
-  glScissor(fb.x, fb.y, fb.width, fb.height);
   rgb.bind();
   mesh.drawVertices();
   rgb.unbind();
@@ -334,13 +353,29 @@ void update_one_rotation(float &rotation){
 void update_rotation(){
   update_one_rotation(rotation[0]);
   update_one_rotation(rotation[1]);
-  update_one_rotation(rotation[2]);
+  // Don't roll around Z, it looks strange
+  //update_one_rotation(rotation[2]);
+}
+
+// Check whether it's time to update the rotation
+
+bool should_update_rotation(double now){
+  static double previous_now = 0.0;
+  bool should = false;
+  double delta = now - previous_now;
+  if(delta > rotation_update_frequency){
+    previous_now = now;
+    should = true;
+  }
+  return should;
 }
 
 // Set the frame to be rendered from the current emotion at the current time
 
 void update_expression(const std::string & emotion, double now){
-  update_rotation();
+  if(should_update_rotation(now)){
+    update_rotation();
+  }
   // Make sure the value is in range
   double now_mod = std::fmod(now, expression_frames[emotion].rbegin()->when);
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();

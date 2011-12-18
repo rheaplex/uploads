@@ -39,46 +39,37 @@ namespace po = boost::program_options;
 
 namespace{
   // The screen (or window, or drawing area)
-  
   float screen_width;
   float screen_height;
   
   // How many horizontal cells to divide the screen into
-
   unsigned int h_cells_count = 3;
 
   // How many horizontal cells to devote to the face area / a-cell
-
   unsigned int h_cells_face = 2;
 
   // And to the eeg area / b-cells
-
   unsigned int h_cells_eegs = h_cells_count - h_cells_face;
 
   // The border between the inner cells and the edge of the drawing area, 
   //  and each other
-  
   float outer_border_width = 20.0;
-  float inner_border_width = outer_border_width / 2.0;
+  float inner_border_width = 18.0;
 
   // The gap between each eeg graph (b-cells, as opposed to the face a-cell)
   // Just use inner border? Default to it...
-
   float b_cell_vertical_padding = outer_border_width;
   
   // Labels
-  
   float large_label_size = 12;
   float small_label_size = 12;
 
   // These are the values from the eegs to use
   // eeg_above is exclusive
-
   int eeg_low = 1;
   int eeg_above = 9;
 
   // The bounds of the face rectangle, or "a-cell"
-
   ofRectangle face_bounds_rect;
 
   // The bounds rectangles to render each eeg trace in
@@ -156,7 +147,7 @@ void calculate_eeg_bounds(int index, int count, ofRectangle & bounds){
   bounds.x = screen_width - b_width + inner_border_width;
   bounds.y = outer_border_width + (cell_vertical_offset * index);
   bounds.width = b_width - (outer_border_width + inner_border_width);
-  bounds.height = (b_height - (b_cell_vertical_padding * (count - 1))) / count;
+  bounds.height = cell_vertical_offset - inner_border_width;
 }
 
 // Calculate the bounds for all the b-cells
@@ -251,6 +242,7 @@ void layout_initialize(const po::variables_map & vm){
   else
     background = str2col("333333");
 
+  // Not necessarily the screen height/width, but we assume fullscreen
   screen_width = ofGetWidth();
   screen_height = ofGetHeight();
 
@@ -264,6 +256,6 @@ void layout_initialize(const po::variables_map & vm){
   }
   h_cells_eegs = h_cells_count - h_cells_face;
 
-  calculate_face_bounds();
   calculate_eegs_bounds();
+  calculate_face_bounds();
 }
