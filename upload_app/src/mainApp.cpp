@@ -95,9 +95,9 @@ void mainApp::update(){
   }
 
   // Reset the emotion map every so often
-  if (now - previousEmotionReset >= 10){
+  if((now - previousEmotionReset) >= 10){
     reset_twitter_emotion_map();
-    previousEmotionReset = 0;
+    previousEmotionReset = now;
   }
 
   // Update the eeg and expression state based on the current emotion and time
