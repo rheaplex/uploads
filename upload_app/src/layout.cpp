@@ -143,6 +143,8 @@ void calculate_face_bounds(){
     ((screen_width / (float)h_cells_count) * (float)h_cells_face) - 
     (inner_border_width);
   face_bounds_rect.height = screen_height - (outer_border_width * 2.0);
+  std::cerr << screen_height << std::endl;
+  std::cerr << face_bounds_rect.height << std::endl;
 }
 
 // We could usefully cache many of the values this calculates for speed
@@ -162,6 +164,7 @@ void calculate_eeg_bounds(int index, int count, ofRectangle & bounds){
 // Calculate the bounds for all the b-cells
 
 void calculate_eegs_bounds(){
+  eeg_bounds_rect.clear();
   int count = (eeg_above - eeg_low) - 1;
   for(int i = 0; i < count; i++){
       ofRectangle bounds;
@@ -211,7 +214,11 @@ void layout_add_options(po::options_description & desc){
 
 // Initialize the layout variables from Boost options
 
-void layout_initialize(const po::variables_map & vm){
+void layout_initialize(const po::variables_map & vm, float width, float height){
+  // Drawing area size
+  screen_width = width;
+  screen_height = height;
+
   if(vm.count("columns"))
     h_cells_count = vm["columns"].as<unsigned int>();
   if(vm.count("face_columns"))
@@ -240,10 +247,6 @@ void layout_initialize(const po::variables_map & vm){
     background = str2col(vm["background"].as<std::string>());
   else
     background = str2col("333333");
-
-  // Not necessarily the screen height/width, but we assume fullscreen
-  screen_width = ofGetWidth();
-  screen_height = ofGetHeight();
 
   // Hmmm. But this makes them the same. Handle or leave?
   // Set to default value if not set by user

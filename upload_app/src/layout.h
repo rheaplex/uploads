@@ -37,4 +37,3 @@ float eeg_line_width();
 float frame_line_width();
 
 #endif
-

@@ -20,6 +20,7 @@
 #define __LAYOUT_OPTIONS_H__
 
 extern void layout_add_options(po::options_description & desc);
-extern void layout_initialize(const po::variables_map & vm);
+extern void layout_initialize(const po::variables_map & vm,
+			      float width, float height);
 
 #endif
