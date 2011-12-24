@@ -22,6 +22,7 @@
 // Includes
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iostream>
@@ -188,7 +189,7 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base){
   // The path is of the format /a/b/c/2346.12
   when = std::atof(path_root.filename().c_str()) - when_base;
   // Load the texture map
-  ofLoadImage(rgb, path_root.string() + ".png");
+  rgb.loadImage(path_root.string() + ".png");
   boost::shared_array<float> xyz;
   size_t num_coords = slurp_gzipped_csv_floats(xyz,
 					       path_root.string() + ".xyz",
@@ -284,7 +285,7 @@ bool is_png_file(const boost::filesystem::directory_iterator & i){
     is = false;
   }
   boost::smatch what;
-  if(! boost::regex_match(i->leaf(), what, png_filter)){
+  if(! boost::regex_match(i->path().filename().string(), what, png_filter)){
       is = false;
   }
   return is;
@@ -325,6 +326,9 @@ void load_expressions(const std::string & person_dir){
       i != emotions.end(); ++i){
     std::vector<Frame> frames;
     load_expression(person_dir + "/" + *i, frames);
+    std::sort(frames.begin(), frames.end(),
+	      [](const Frame & a, const Frame & b)
+	        {return a.when < b.when;});
     expression_frames[*i] = frames;
   }
 }
@@ -394,6 +398,7 @@ void update_expression(const std::string & emotion, double now){
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();
   while(i->when < now_mod){
     ++i;
+    assert(i != expression_frames[emotion].end());
   }
   current_frame = *i;
 }

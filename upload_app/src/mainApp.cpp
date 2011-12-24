@@ -40,22 +40,24 @@ mainApp::mainApp(int argc, char * argv[]):
   twitter_add_options(desc);
   expression_add_options(desc);
   desc.add_options()
-    ("data", po::value<std::string>(), "the path to the data directory");
+    ("data", po::value<std::string>(),
+     "the ABSOLUTE path to the data directory");
 
   // Parse the arguments
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
-  layout_initialize(vm);
-  twitter_initialize(vm);
-  expression_initialize(vm);
 
   // Make sure we have the data path
-  if(vm.count("data")){
+  if(vm.count("data") && (vm["data"].as<std::string>()[0] == '/')){
     this->data_path = vm["data"].as<std::string>();
   }else{
-    throw "Please specify -data /path/to-data/directory";
+    throw "Please specify -data /absolute/path/to-data/directory";
   }
+
+  layout_initialize(vm, ofGetScreenWidth(), ofGetScreenHeight());
+  twitter_initialize(vm);
+  expression_initialize(vm);
 }
 
 
@@ -87,12 +89,13 @@ void mainApp::update(){
   now = ofGetElapsedTimef();
 
   // Find out what the current dominant emotion is
-  current_twitter_emotion(emotion);
+  /*current_twitter_emotion(emotion);
   // If we haven't got any streaming results yet the emotion will be empty
   // So try again next time
   if(emotion == ""){
     return;
-  }
+    }*/
+  emotion = "love";
 
   // Reset the emotion map every so often
   if((now - previousEmotionReset) >= 10){
@@ -114,6 +117,7 @@ void mainApp::draw(){
   if(emotion == ""){
     return;
   }
+
   draw_eegs();
   draw_expression();
 }

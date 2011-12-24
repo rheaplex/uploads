@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
@@ -60,6 +61,12 @@ void normalize_timestamps(T & values, double base){
   for(typename T::iterator i = values.begin(); i < values.end(); ++i){
     (*i).timestamp = (*i).timestamp - base;
   }
+}
+
+template<class T>
+void sort_by_timestamps(std::vector<T> & values){
+  std::sort(values.begin(), values.end(),
+	    [](const T & a, const T & b){return a.timestamp < b.timestamp;});
 }
 
 
@@ -109,11 +116,15 @@ void line_to_levels(const std::string & line, power_levels & levels){
   std::vector<std::string> fields;
   boost::split(fields, line, boost::is_any_of("\t"));
   levels.timestamp = ::atof(fields[0].c_str());
-  levels.values = {::atoi(fields[1].c_str()), ::atoi(fields[2].c_str()),
-		   ::atoi(fields[3].c_str()), ::atoi(fields[4].c_str()),
-		   ::atoi(fields[5].c_str()),	::atoi(fields[6].c_str()),
-		   ::atoi(fields[7].c_str()), ::atoi(fields[8].c_str()),
-		   ::atoi(fields[9].c_str())};
+  levels.values[0] = ::atoi(fields[1].c_str());
+  levels.values[1] = ::atoi(fields[2].c_str());
+  levels.values[2] = ::atoi(fields[3].c_str());
+  levels.values[3] = ::atoi(fields[4].c_str());
+  levels.values[4] = ::atoi(fields[5].c_str());
+  levels.values[5] = ::atoi(fields[6].c_str());
+  levels.values[6] = ::atoi(fields[7].c_str());
+  levels.values[7] = ::atoi(fields[8].c_str());
+  levels.values[8] = ::atoi(fields[9].c_str());
   assert(levels.timestamp != 0.0);
 }
 
@@ -264,6 +275,9 @@ void load_emotions(const std::string & username){
     load_emotion_raw_eeg_data(username, emotion, data.raw_eeg);
     // Ensure power levels and raw eeg data have the same range
     truncate_eeg_to_levels_timestamps(data.raw_eeg, data.power_levels);
+    // Ensure they are in order
+    sort_by_timestamps(data.power_levels);
+    sort_by_timestamps(data.raw_eeg);
     // Then make the timestamps on each relative to the first timestamp
     double relative_to = data.power_levels[0].timestamp;
     normalize_timestamps(data.power_levels, relative_to);
@@ -326,7 +340,7 @@ void update_data_vector(double now_mod,
 			U & destination,
 			typename T::iterator & iter){
   // If we've wrapped round
-  // In pathalogical cases of system delay we will miss multiple passes
+  // In pathological cases of system delay we will miss multiple passes
   //  if that happens there are probably worse things to worry about
   //  and the code won't fail, it
   if(now_mod < previous_mod){ 
