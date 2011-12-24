@@ -89,13 +89,12 @@ void mainApp::update(){
   now = ofGetElapsedTimef();
 
   // Find out what the current dominant emotion is
-  /*current_twitter_emotion(emotion);
+  current_twitter_emotion(emotion);
   // If we haven't got any streaming results yet the emotion will be empty
   // So try again next time
   if(emotion == ""){
     return;
-    }*/
-  emotion = "love";
+  }
 
   // Reset the emotion map every so often
   if((now - previousEmotionReset) >= 10){

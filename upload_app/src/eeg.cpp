@@ -349,14 +349,14 @@ void update_data_vector(double now_mod,
       destination.push_front(*iter);
     }
     // and wrap round
-    iter = source.begin();
+    iter = source.begin();	
   }
   // Whether we looped or not, keep pushing values until we hit the current time
   while(iter->timestamp <= now_mod){
     // Push the new value
     destination.push_front(*iter);
     // Move on to the next data item
-    ++iter;
+    ++iter;	
   }
   // Note that the iterator is now pointing to the next item,
   //  which means it will be at a time *after* the current time
