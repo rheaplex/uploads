@@ -23,7 +23,7 @@ USER_LDFLAGS =
 # use this to add system libraries for example:
 # USER_LIBS = -lpango
  
-USER_LIBS = -lcurl -lboost_filesystem -lboost_iostreams \
+USER_LIBS = -lcurl -lboost_filesystem -lboost_iostreams -lboost_system \
 	  -lboost_program_options -lboost_regex
 
 
