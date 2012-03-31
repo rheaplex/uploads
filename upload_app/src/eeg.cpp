@@ -402,8 +402,10 @@ void update_eegs(const std::string & emotion, double raw_time){
 		     current_emotion_data.power_levels,
 		     levels_display_data, current_levels_iterator);
   // Truncate old data
-  eeg_display_data.resize(std::min(eeg_display_data.size(), eeg_to_display));
-  levels_display_data.resize(std::min(levels_display_data.size(),
+  eeg_display_data.resize(std::min(static_cast<unsigned int>
+				   (eeg_display_data.size()), eeg_to_display));
+  levels_display_data.resize(std::min(static_cast<unsigned int>
+				      (levels_display_data.size()),
 				      levels_to_display));
   last_update_at = current_update_at;
 }

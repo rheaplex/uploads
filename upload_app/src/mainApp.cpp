@@ -52,7 +52,7 @@ mainApp::mainApp(int argc, char * argv[]):
   if(vm.count("data") && (vm["data"].as<std::string>()[0] == '/')){
     this->data_path = vm["data"].as<std::string>();
   }else{
-    throw "Please specify -data /absolute/path/to-data/directory";
+    throw runtime_error("Please specify --data /absolute/path/to/data/dir");
   }
 
   layout_initialize(vm, ofGetScreenWidth(), ofGetScreenHeight());

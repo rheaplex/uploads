@@ -3,7 +3,7 @@
 # OF_ROOT allows to move projects outside apps/* just set this variable to the
 # absoulte path to the OF root folder
 
-OF_ROOT = ~/of_preRelease_v007_linux
+OF_ROOT = ~/of_preRelease_v007_linux64
 
 
 # USER_CFLAGS allows to pass custom flags to the compiler

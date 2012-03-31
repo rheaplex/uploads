@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # capture.py - Capture someone's emotions and expressions to a series of files
-# Copyright (C) 2011  Rob Myers rob@robmyers.org
+# Copyright (C) 2011, 2012  Rob Myers rob@robmyers.org
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,11 +22,13 @@
 ################################################################################
 
 import freenect
+import os
+import sys
 import time
 
 import capture_emotions
-import capture_expression
-from emotions import EMOTIONS
+import capture_expressions
+from emotions import EMOTIONS, SECONDS_TO_CAPTURE_EMOTION_FOR
 
 
 ################################################################################
@@ -52,7 +54,7 @@ def capture_data(duration):
     last_frame = time.time()
     finish = last_frame + duration
     while last_frame < finish:
-        last_frame = capture_expression.handleKinect(frames, last_frame,
+        last_frame = capture_expressions.handleKinect(frames, last_frame,
                                                      time.time())
         chunks.append(capture_emotions.receive_eeg_data(synapse_socket))
     capture_emotions.stop_receiving_eeg_data(synapse_socket)
@@ -73,7 +75,7 @@ def capture_one(person_name, emotion, duration):
             person_emotion_path = os.path.join(person_name, emotion)
             os.mkdir(person_emotion_path)
             eeg_data.to_tsv_files(person_emotion_path)
-            dumpFrames(frames, person_emotion_path)
+            capture_expressions.dumpFrames(frames, person_emotion_path)
             break
         else:
             print "Trying again..."
