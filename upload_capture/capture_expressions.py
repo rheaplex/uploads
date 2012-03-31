@@ -41,12 +41,6 @@ from emotions import EMOTIONS
 # Configuration
 ################################################################################
 
-# How many seconds of data to capture each emotion for
-SECONDS_TO_CAPTURE_EMOTION_FOR = 2
-
-# The delay before reading emotion data
-SECONDS_TO_WAIT_BEFORE_CAPTURING = 2
-
 # How often per second to try to capture a Kinect frame
 KINECT_CAPTURE_FREQUENCY = 10
 KINECT_CAPTURE_TIMING = 1.0 / KINECT_CAPTURE_FREQUENCY
@@ -110,7 +104,9 @@ class KinectFrame(object):
     
     def displayFrame(self):
         # Just show the rgb data for speed
-        cv.ShowImage('both', self.rgb[::2,::2,::-1])
+        # NO, need depth image to ensure we aren't too close to the camera
+        cv.ShowImage('camera', self.rgb)#[::2,::2,::-1])
+        cv.ShowImage('depth(ish)', self.depth)
         cv.WaitKey(5)
 
 

@@ -7,3 +7,4 @@ upload_app/obj/*
 upload_app/bin/libs/*
 upload_app/bin/upload_app
 *.pyc
+*.upload

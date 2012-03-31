@@ -20,3 +20,9 @@
 EKMAN = ["anger", "disgust", "fear", "happiness", "sadness", "surprise"]
 DESCARTES = ["wonder", "love", "hatred", "desire", "joy", "sadness"]
 EMOTIONS = DESCARTES
+
+# How many seconds of data to capture each emotion for
+SECONDS_TO_CAPTURE_EMOTION_FOR = 10
+
+# The delay before reading emotion data
+SECONDS_TO_WAIT_BEFORE_CAPTURING = 2

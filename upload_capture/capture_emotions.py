@@ -46,13 +46,6 @@ from emotions import EMOTIONS
 # Configuration
 ################################################################################
 
-
-# How many seconds of data to capture each emotion for
-SECONDS_TO_CAPTURE_EMOTION_FOR = 10
-
-# The delay before reading emotion data
-SECONDS_TO_WAIT_BEFORE_CAPTURING = 2
-
 # The amount of data to read each time from the Synaptic server
 CHUNK_MAX_SIZE = 256
 
@@ -169,8 +162,7 @@ class EegData(object):
 
 def start_receiving_eeg_data():
     """Connect a socket to the Synapse server"""
-    s = socket.create_connection(("localhost", 13854))
-    return
+    return socket.create_connection(("localhost", 13854))
 
 
 def stop_receiving_eeg_data(s):
