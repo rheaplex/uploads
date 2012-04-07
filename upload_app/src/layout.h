@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    layout.h - calculating the screen layout
-//    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2012  Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -35,5 +35,7 @@ extern void foreground_colour(ofColor & col);
 
 float eeg_line_width();
 float frame_line_width();
+
+float face_gl_offset_x();
 
 #endif

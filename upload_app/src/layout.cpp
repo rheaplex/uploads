@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    layout.cpp - calculating the screen layout
-//    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2012  Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -125,6 +125,11 @@ ofRectangle & face_bounds(){
 
 ofRectangle & eeg_bounds(int index){
   return eeg_bounds_rect[index];
+}
+
+float face_gl_offset_x() {
+  // No idea :-(
+  return -0.100;
 }
 
 

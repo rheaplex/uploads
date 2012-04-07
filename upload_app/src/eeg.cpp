@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    eeg.cpp - load serialized eeg data
-//    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2012  Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by

@@ -34,7 +34,7 @@ import freenect
 
 import calibkinect
 
-from emotions import EMOTIONS
+import emotions
 
 
 ################################################################################
@@ -69,8 +69,7 @@ class KinectFrame(object):
         q = self.depth
         X,Y = numpy.meshgrid(range(KINECT_FRAME_WIDTH),
                              range(KINECT_FRAME_HEIGHT))
-        d = 4
-        return calibkinect.depth2xyzuv(q[::d,::d],X[::d,::d],Y[::d,::d])
+        return calibkinect.depth2xyzuv(q,X,Y)
     
     
     def dumpFrame(self, path):
@@ -137,11 +136,11 @@ def capture_emotion(captured_emotions, person_name, emotion, duration):
     while True:
         print "Please start [pretending that you are] feeling %s" % emotion
         print "I am going to start capturing data in %s seconds" % \
-            SECONDS_TO_WAIT_BEFORE_CAPTURING
-        time.sleep(SECONDS_TO_WAIT_BEFORE_CAPTURING)
+            emotions.SECONDS_TO_WAIT_BEFORE_CAPTURING
+        time.sleep(emotions.SECONDS_TO_WAIT_BEFORE_CAPTURING)
         frames = []
         last_frame = time.time()
-        finish = last_frame + SECONDS_TO_CAPTURE_EMOTION_FOR
+        finish = last_frame + emotions.SECONDS_TO_CAPTURE_EMOTION_FOR
         while last_frame < finish:
             last_frame = handleKinect(frames, last_frame, time.time())
         print "Done. Did you manage to hold the feeling the entire time? [y/n]"
@@ -186,10 +185,10 @@ def usage():
     sys.exit(1)
 
 
-def new_emotions(person_name):
+def new_emotions(person_name, emotion_names):
     """List the emotions that need capturing"""
     emotions = []
-    for emotion in EMOTIONS:
+    for emotion in emotion_names:
         # Folder may already exist due to capture_emotion, so check for files
         if not glob.glob(os.path.join(person_name, emotion,
                                       "*.%s" % KINECT_FRAME_FORMAT)):
@@ -205,13 +204,14 @@ def main():
     if len(sys.argv) != 2:
         usage()
     person_name = sys.argv[1]
-    emotions = EMOTIONS
+    emotion_names = emotions.EMOTIONS
     if os.path.exists(person_name):
         print "Folder for %s exists. Adding any missing faces." % person_name
-        emotions = new_emotions(person_name) 
+        emotion_names = new_emotions(person_name, emotion_names) 
     else:
         os.mkdir(person_name)
-    capture_emotions(person_name, emotions, SECONDS_TO_CAPTURE_EMOTION_FOR)
+    capture_emotions(person_name, emotion_names,
+                     emotions.SECONDS_TO_CAPTURE_EMOTION_FOR)
 
 
 if __name__ == "__main__":
