@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    expression.cpp - load serialized kinect frame data
-//    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
+//    Copyright (C) 2011, 2012  Rob Myers <rob@robmyers.org>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -64,17 +64,23 @@ namespace po = boost::program_options;
 static const int TEXTURE_WIDTH = 640;
 static const int TEXTURE_HEIGHT = 480;
 
+// If we're debugging, how many frames to load
+static const unsigned int debug_frames_to_load = 10;
+
 // How the voxel render rotation drifts over time
 // In degrees
 static float rotation_drift = 0.5f;
 static float max_rotation_drift = 36.0f;
 static float rotation_update_frequency = 0.2;
 
-// The rear clipping plane distance in metres
-static float rear_clip = 3.0;
+// The rear clipping plane distance
+static float rear_clip = 1.0;
 
 // The size of the squares for the voxel render
-static float voxel_size = 5.0;
+static float voxel_size = 10.0;
+
+// Whether we are debugging
+static bool debugging = false;
 
 // Describe the options to Boost
 
@@ -96,13 +102,15 @@ void expression_initialize(const po::variables_map & vm){
   if(vm.count("rear_clip"))
     rear_clip = vm["rear_clip"].as<float>();
   if(vm.count("rotation_drift"))
-    rotation_drift = vm["rear_clip"].as<float>();
+    rotation_drift = vm["rotation_drift"].as<float>();
   if(vm.count("rotation_max"))
     max_rotation_drift = vm["rotation_max"].as<float>();
-  if(vm.count("rear_clip"))
-    rotation_update_frequency = vm["roration_time"].as<float>();
+  if(vm.count("rotation_time"))
+    rotation_update_frequency = vm["rotation_time"].as<float>();
   if(vm.count("voxel_size"))
     voxel_size = vm["voxel_size"].as<float>();
+  // Cheat and take our own copy
+  debugging = vm.count("debug");
 }
 
 
@@ -208,16 +216,19 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base){
   mesh.setMode(OF_PRIMITIVE_POINTS);
   // Scale the points to window co-ordinates
   ofRectangle fb = face_bounds();
-  float scale = (fb.height / smallest_y_max) / 2.0;
+  //float scale = (fb.height / smallest_y_max) / 2.0;
   for(size_t i = 0; i < num_coords; i++){
     float * point = xyz.get() + (i * 3);
     // Z Clip here rather than during rendering
     // Note that we compare abs(x) to max y to make the mesh roughly square
-    if((point[2] < rear_clip) || (std::abs(point[1]) > smallest_y_max)){ // 
+    if((std::abs(point[2]) < rear_clip) || 
+       (std::abs(point[1]) > smallest_y_max)){ // 
       float * tex = uv.get() + (i * 2);
+      // No, don't flip the Vs
       // Flip the Vs: rgb.height is zero at this point(!), so use the constant
-      mesh.addTexCoord(ofVec2f(tex[0], TEXTURE_HEIGHT - tex[1]));
-      mesh.addVertex(ofVec3f(point[0] * scale, point[1] * scale, point[2]));
+      mesh.addTexCoord(ofVec2f(tex[0], /*TEXTURE_HEIGHT -*/ tex[1]));
+      //mesh.addVertex(ofVec3f(point[0] * scale, point[1] * scale, point[2]));
+      mesh.addVertex(ofVec3f(point[0], point[1], point[2]));
     }
   }
 }
@@ -251,23 +262,71 @@ void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
 
 void Frame::render(float rotation[3]){
   ofRectangle fb = face_bounds();
+
+  // Enable depth testing
+  glClear(GL_DEPTH_BUFFER_BIT);
+  glEnable(GL_DEPTH_TEST);
+  glPushMatrix();
+
+  //Clip to the face drawing area
+  glEnable(GL_SCISSOR_TEST);
+  glScissor(fb.x, fb.y, fb.width, fb.height);
+
+  // Set up the projection matrix
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  // 45 fits the clip area vertical extents nicely :-)
+  // This is cheating, we should scale. :-/
+  gluPerspective(45, 4/3.0, 0.0, rear_clip);
+
+  // Set up the model matrix
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+
+  // Centre the face view in the scissored region
+  glTranslatef(face_gl_offset_x(), 0, 0);
+
+  /*ofRotateX(rotation[0]);
+  ofRotateY(rotation[1]);
+  ofRotateZ(rotation[2]);*/
+
+  rgb.bind();
+  glPointSize(voxel_size);
+  mesh.drawVertices();
+
+  // And clean up
+  rgb.unbind();
+  glPopMatrix();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_SCISSOR_TEST);
+
+  /*ofRectangle fb = face_bounds();
   glPointSize(voxel_size);
   ofPushMatrix();
   // Clip to the face drawing area
   glEnable(GL_SCISSOR_TEST);
+  ofRectangle fb = face_bounds();
   glScissor(fb.x, fb.y, fb.width, fb.height);
   // Centre drawing on the face area
   ofTranslate((fb.x + (fb.width / 2.0)), (fb.y + (fb.height / 2.0)), 0.0);
+  // Flip the y-axis and z-axis
+  ofScale(1.0f, -1.0f, -1.0f);
+  //ofTranslate(0.0, 0.0, 2.5);
+  // Handle the rotation drift
   ofRotateX(rotation[0]);
   ofRotateY(rotation[1]);
   ofRotateZ(rotation[2]);
-  glEnable(GL_DEPTH_TEST);
+  // Draw the mesh
   rgb.bind();
   mesh.drawVertices();
+  // And clean up
   rgb.unbind();
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_SCISSOR_TEST);
-  ofPopMatrix();
+  ofPopMatrix();*/
 }
 
 
@@ -299,6 +358,7 @@ void load_expression(const std::string & emotion_dir,
   boost::filesystem::directory_iterator end;
   boost::filesystem::directory_iterator i(emotion_dir);
   double when_base = -1.0;
+  unsigned int loaded_count = 0;
   // Load each frame
   for(; i != end; ++i ){
     // use .pngs as the indicators of times. alphabetically they're first
@@ -313,6 +373,10 @@ void load_expression(const std::string & emotion_dir,
       }
       Frame frame(path, when_base);
       frames.push_back(frame);
+      loaded_count++;
+      if(debugging && (loaded_count > debug_frames_to_load)) {
+	break;
+      }
     }
   }
 }
@@ -411,8 +475,8 @@ void update_expression(const std::string & emotion, double now){
 // Render the current frame in its bounds rectangle in the layout
 
 void draw_expression(){
+  // Frame the render
   current_frame.render(rotation);
-  // Frame the render (overpainting any stray voxel edges)
   ofRectangle bounds = face_bounds();
   ofNoFill();
   ofRect(bounds);

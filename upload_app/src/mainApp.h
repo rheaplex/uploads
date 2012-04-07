@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    mainApp.h - main OpenFrameworks application
-//    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
+//    Copyright (C) 2011, 2012  Rob Myers <rob@robmyers.org>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@ class mainApp : public ofBaseApp {
   std::string emotion;
   double      now;
   float       previousEmotionReset;
+  bool        debugging;
 };
 
 #endif

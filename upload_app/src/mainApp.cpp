@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    mainApp.cpp - main OpenFrameworks application
-//    Copyright (C) 2011  Rob Myers <rob@robmyers.org>
+//    Copyright (C) 2011, 2012  Rob Myers <rob@robmyers.org>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -41,7 +41,9 @@ mainApp::mainApp(int argc, char * argv[]):
   expression_add_options(desc);
   desc.add_options()
     ("data", po::value<std::string>(),
-     "the ABSOLUTE path to the data directory");
+     "the ABSOLUTE path to the data directory")
+    ("debug",
+     "use the first emotion and first 10 frames only, for debugging");
 
   // Parse the arguments
   po::variables_map vm;
@@ -54,6 +56,8 @@ mainApp::mainApp(int argc, char * argv[]):
   }else{
     throw runtime_error("Please specify --data /absolute/path/to/data/dir");
   }
+
+  debugging = vm.count("debug");
 
   layout_initialize(vm, ofGetScreenWidth(), ofGetScreenHeight());
   twitter_initialize(vm);
@@ -89,11 +93,15 @@ void mainApp::update(){
   now = ofGetElapsedTimef();
 
   // Find out what the current dominant emotion is
-  current_twitter_emotion(emotion);
-  // If we haven't got any streaming results yet the emotion will be empty
-  // So try again next time
-  if(emotion == ""){
-    return;
+  if(debugging) {
+    emotion = emotions[0];
+  } else {
+    current_twitter_emotion(emotion);
+    // If we haven't got any streaming results yet the emotion will be empty
+    // So try again next time
+    if(emotion == ""){
+      return;
+    }
   }
 
   // Reset the emotion map every so often
