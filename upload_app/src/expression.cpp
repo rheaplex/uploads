@@ -67,12 +67,6 @@ static const int TEXTURE_HEIGHT = 480;
 // If we're debugging, how many frames to load
 static const unsigned int debug_frames_to_load = 10;
 
-// How the voxel render rotation drifts over time
-// In degrees
-static float rotation_drift = 0.5f;
-static float max_rotation_drift = 36.0f;
-static float rotation_update_frequency = 0.2;
-
 // The rear clipping plane distance
 static float rear_clip = 1.0;
 
@@ -87,12 +81,6 @@ static bool debugging = false;
 void expression_add_options(po::options_description & desc){
   desc.add_options()
     ("rear_clip", po::value<float>(), "distance to rear clipping pane (metres)")
-    ("rotation_drift", po::value<float>(),
-     "how much (+/-) to update rotation each time")
-    ("rotation_max", po::value<float>(),
-     "the maximum (+/-) rotation in degrees")
-    ("rotation_time", po::value<float>(),
-     "how often to update rotation, in seconds")
     ("voxel_size", po::value<float>(), "voxel size in pixels");
 }
 
@@ -101,12 +89,6 @@ void expression_add_options(po::options_description & desc){
 void expression_initialize(const po::variables_map & vm){
   if(vm.count("rear_clip"))
     rear_clip = vm["rear_clip"].as<float>();
-  if(vm.count("rotation_drift"))
-    rotation_drift = vm["rotation_drift"].as<float>();
-  if(vm.count("rotation_max"))
-    max_rotation_drift = vm["rotation_max"].as<float>();
-  if(vm.count("rotation_time"))
-    rotation_update_frequency = vm["rotation_time"].as<float>();
   if(vm.count("voxel_size"))
     voxel_size = vm["voxel_size"].as<float>();
   // Cheat and take our own copy
@@ -123,6 +105,9 @@ void expression_initialize(const po::variables_map & vm){
 void slurp_gzipped_lines(const std::string & path,
 			 std::vector<std::string> & lines){
   std::ifstream file(path);//, ios_base::in | ios_base::binary);
+  if(! file) {
+    throw runtime_error("Problem opening file: " + path);
+  }
   boost::iostreams::filtering_stream<boost::iostreams::input> in;
   in.push(boost::iostreams::gzip_decompressor());
   in.push(file);
@@ -166,7 +151,7 @@ public:
   Frame();
   Frame(const boost::filesystem::path & path_root, double when_base);
   ~Frame();
-  void render(float rotation[3]);
+  void render();
 
 private:
   void calculate_smallest_y_max(boost::shared_array<float> & xyz,
@@ -208,7 +193,7 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base){
 						     2);
   // Move this to a non-debug check
   if(num_coords != other_num_coords){
-    throw "Coord count mismatch";
+    throw runtime_error("Coord count mismatch");
   }
   // Get the closest maximal distance to the y origin above or below it
   calculate_smallest_y_max(xyz, num_coords);
@@ -260,7 +245,7 @@ void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
 
 // Render the frame
 
-void Frame::render(float rotation[3]){
+void Frame::render(){
   ofRectangle fb = face_bounds();
 
   // Enable depth testing
@@ -287,10 +272,6 @@ void Frame::render(float rotation[3]){
   // Centre the face view in the scissored region
   glTranslatef(face_gl_offset_x(), 0, 0);
 
-  /*ofRotateX(rotation[0]);
-  ofRotateY(rotation[1]);
-  ofRotateZ(rotation[2]);*/
-
   rgb.bind();
   glPointSize(voxel_size);
   mesh.drawVertices();
@@ -302,31 +283,6 @@ void Frame::render(float rotation[3]){
   glPopMatrix();
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_SCISSOR_TEST);
-
-  /*ofRectangle fb = face_bounds();
-  glPointSize(voxel_size);
-  ofPushMatrix();
-  // Clip to the face drawing area
-  glEnable(GL_SCISSOR_TEST);
-  ofRectangle fb = face_bounds();
-  glScissor(fb.x, fb.y, fb.width, fb.height);
-  // Centre drawing on the face area
-  ofTranslate((fb.x + (fb.width / 2.0)), (fb.y + (fb.height / 2.0)), 0.0);
-  // Flip the y-axis and z-axis
-  ofScale(1.0f, -1.0f, -1.0f);
-  //ofTranslate(0.0, 0.0, 2.5);
-  // Handle the rotation drift
-  ofRotateX(rotation[0]);
-  ofRotateY(rotation[1]);
-  ofRotateZ(rotation[2]);
-  // Draw the mesh
-  rgb.bind();
-  mesh.drawVertices();
-  // And clean up
-  rgb.unbind();
-  glDisable(GL_DEPTH_TEST);
-  glDisable(GL_SCISSOR_TEST);
-  ofPopMatrix();*/
 }
 
 
@@ -386,8 +342,14 @@ void load_expression(const std::string & emotion_dir,
 // with.xyz and .uv files accompanying it
 
 void load_expressions(const std::string & person_dir){
+  std::vector<std::string>::const_iterator end;
+  if(debugging) {
+    end = ++(emotions.begin());
+  } else {
+    end = emotions.end();
+  }
   for(std::vector<std::string>::const_iterator i = emotions.begin();
-      i != emotions.end(); ++i){
+      i != end; ++i){
     std::vector<Frame> frames;
     load_expression(person_dir + "/" + *i, frames);
     std::sort(frames.begin(), frames.end(),
@@ -406,57 +368,9 @@ void load_expressions(const std::string & person_dir){
 // The frame we are currently drawing
 static Frame current_frame;
 
-// The rotation to draw the frame at
-float rotation[] = {0.0, 0.0, 0.0};
-
-// C++ really doesn't have a float pseudo-random number generator
-
-float frand(){
-  return ((float)random()) / (float)RAND_MAX;
-}
-
-// Drift one rotation by up to the drifr amount, clamping it to the max rotation
-
-void update_one_rotation(float &rotation){
-  float delta = frand() * rotation_drift;
-  // Half the time the amount is positive, half the time it's negative
-  if(frand() > 0.5){
-    delta = - delta;
-  }
-  float new_rotation = rotation + delta;
-  if(std::fabs(new_rotation) <= max_rotation_drift){
-    rotation = new_rotation;
-  }
-}
-
-// Drift the rotation of the frame around the origin
-
-void update_rotation(){
-  update_one_rotation(rotation[0]);
-  update_one_rotation(rotation[1]);
-  // Don't roll around Z, it looks strange
-  //update_one_rotation(rotation[2]);
-}
-
-// Check whether it's time to update the rotation
-
-bool should_update_rotation(double now){
-  static double previous_now = 0.0;
-  bool should = false;
-  double delta = now - previous_now;
-  if(delta > rotation_update_frequency){
-    previous_now = now;
-    should = true;
-  }
-  return should;
-}
-
 // Set the frame to be rendered from the current emotion at the current time
 
 void update_expression(const std::string & emotion, double now){
-  if(should_update_rotation(now)){
-    update_rotation();
-  }
   // Make sure the value is in range
   double now_mod = std::fmod(now, expression_frames[emotion].rbegin()->when);
   std::vector<Frame>::iterator i = expression_frames[emotion].begin();
@@ -476,7 +390,7 @@ void update_expression(const std::string & emotion, double now){
 
 void draw_expression(){
   // Frame the render
-  current_frame.render(rotation);
+  current_frame.render();
   ofRectangle bounds = face_bounds();
   ofNoFill();
   ofRect(bounds);

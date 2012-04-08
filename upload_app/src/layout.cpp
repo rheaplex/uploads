@@ -148,8 +148,6 @@ void calculate_face_bounds(){
     ((screen_width / (float)h_cells_count) * (float)h_cells_face) - 
     (inner_border_width);
   face_bounds_rect.height = screen_height - (outer_border_width * 2.0);
-  std::cerr << screen_height << std::endl;
-  std::cerr << face_bounds_rect.height << std::endl;
 }
 
 // We could usefully cache many of the values this calculates for speed

@@ -28,6 +28,9 @@
 #define EEG_ABOVE 8
 #define EEG_COUNT (EEG_ABOVE - EEG_LOW)
 
+void eeg_add_options(po::options_description & desc);
+void eeg_initialize(const po::variables_map & vm);
+
 void load_emotions(const std::string & name);
 
 void update_eegs(const std::string & emotion, double now);
