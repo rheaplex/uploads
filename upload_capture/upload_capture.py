@@ -64,12 +64,13 @@ def capture_data(duration):
 def capture_one(person_name, emotion, duration):
     """Capture the emotion to tsv files in person_name/emotion"""
     while True:
-        print "Please start (pretending that you are) feeling %s" % emotion
+        print "\aPlease start (pretending that you are) feeling %s" % emotion
         print "I am going to start capturing data in %s seconds" % \
             SECONDS_TO_WAIT_BEFORE_CAPTURING
         time.sleep(SECONDS_TO_WAIT_BEFORE_CAPTURING)
         frames, eeg_data = capture_data(duration)
-        print "Done. Did you manage to hold the feeling the entire time? [y/n]"
+        print "\aDone."
+        print "Did you manage to hold the feeling the entire time? [y/n]"
         if raw_input().lower().strip() in ["y", "yes"]:
             print "Saving to file..."
             person_emotion_path = os.path.join(person_name, emotion)

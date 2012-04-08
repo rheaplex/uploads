@@ -237,7 +237,6 @@ void * run_streaming_search(void * user_pass){
     twitter_emotion_map = build_emotion_map();
     ::curl_easy_setopt(curl, CURLOPT_WRITEDATA, &twitter_emotion_map);
     CURLcode result = ::curl_easy_perform(curl);
-    std::cerr << "curl_easy_perform: "<< result << std::endl;
     ::curl_easy_cleanup(curl);
     ::curl_global_cleanup();
   }

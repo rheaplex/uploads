@@ -40,6 +40,9 @@
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
 
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
+
 #include "ofGraphics.h"
 #include "ofRectangle.h"
 
@@ -48,6 +51,26 @@
 
 #include "eeg.h"
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Configuration
+////////////////////////////////////////////////////////////////////////////////
+
+// Whether we are debugging
+static bool debugging = false;
+
+// Describe the options to Boost
+
+void eeg_add_options(po::options_description & desc){
+  // do nothing
+}
+
+// Initialize the variables from Boost options
+
+void eeg_initialize(const po::variables_map & vm){
+  // Cheat and take our own copy
+  debugging = vm.count("debug");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Timestamps
@@ -268,7 +291,11 @@ void load_emotion_power_levels_data(const std::string & user_name,
 // Load all the user's emotion data files from each emotion folder
 
 void load_emotions(const std::string & username){
-  BOOST_FOREACH(const std::string & emotion, emotions){
+  std::vector<std::string> emotions_to_load = emotions;
+  if(debugging) {
+    emotions_to_load = {emotions[0]};
+  }
+  BOOST_FOREACH(const std::string & emotion, emotions_to_load){
     emotion_data data;
     data.name = emotion;
     load_emotion_power_levels_data(username, emotion, data.power_levels);

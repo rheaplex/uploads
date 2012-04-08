@@ -38,6 +38,7 @@ mainApp::mainApp(int argc, char * argv[]):
   po::options_description desc;
   layout_add_options(desc);
   twitter_add_options(desc);
+  eeg_add_options(desc);
   expression_add_options(desc);
   desc.add_options()
     ("data", po::value<std::string>(),
@@ -61,6 +62,7 @@ mainApp::mainApp(int argc, char * argv[]):
 
   layout_initialize(vm, ofGetScreenWidth(), ofGetScreenHeight());
   twitter_initialize(vm);
+  eeg_initialize(vm);
   expression_initialize(vm);
 }
 
