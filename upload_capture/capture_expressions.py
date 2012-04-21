@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # capture_expressions.py - Capture someone's emoting face using a Kinect
-# Copyright (C) 2011  Rob Myers rob@robmyers.org
+# Copyright (C) 2011, 2012  Rob Myers rob@robmyers.org
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@
 
 import cv
 import glob
-import gzip
 import os
 import numpy
 from PIL import Image
@@ -90,16 +89,11 @@ class KinectFrame(object):
                                     "%s.%s" % (self.when, KINECT_FRAME_FORMAT)),
                        optimize=True)
         xyz, uv = self.xyzuv()
-        # Save as gzipped tsv. Floats aren't portable, ascii is verbose
-        uv_out = gzip.open(os.path.join(path, "%s.uv" % self.when), 'w')
-        for val in uv:
-            print >>uv_out, "%f\t%f" % (val[0], val[1])
-        uv_out.close()
-        # Save as gzipped tsv. Floats aren't portable, ascii is verbose
-        xyz_out = gzip.open(os.path.join(path, "%s.xyz" % self.when), 'w')
-        for sample in xyz:
-            print >>xyz_out, "%f\t%f\t%f" % (sample[0], sample[1], sample[2])
-        xyz_out.close()
+        # Save as gzipped tsv. Bulky text rather than binary incompatibility
+        uvpath = os.path.join(path, "%s.uv.gz" % self.when)
+        numpy.savetxt(uvpath, uv, delimeter='\t')
+        xyzpath = os.path.join(path, "%s.xyz.gz" % self.when)
+        numpy.savetxt(xyzpath, xyz, delimeter='\t')
     
     def displayFrame(self):
         # Just show the rgb data for speed
