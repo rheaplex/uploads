@@ -61,40 +61,53 @@ def capture_data(duration):
     return frames, capture_emotions.eeg_data_from_chunks(chunks)
 
 
-def capture_one(person_name, emotion, duration):
+def capture_one(emotion, duration):
     """Capture the emotion to tsv files in person_name/emotion"""
     while True:
         print "\aPlease start (pretending that you are) feeling %s" % emotion
         print "I am going to start capturing data in %s seconds" % \
             SECONDS_TO_WAIT_BEFORE_CAPTURING
         time.sleep(SECONDS_TO_WAIT_BEFORE_CAPTURING)
-        frames, eeg_data = capture_data(duration)
+        frames_and_eeg_data = capture_data(duration)
         print "\aDone."
         print "Did you manage to hold the feeling the entire time? [y/n]"
         if raw_input().lower().strip() in ["y", "yes"]:
-            print "Saving to file..."
-            person_emotion_path = os.path.join(person_name, emotion)
-            os.mkdir(person_emotion_path)
-            eeg_data.to_tsv_files(person_emotion_path)
-            capture_expressions.dumpFrames(frames, person_emotion_path)
             break
         else:
             print "Trying again..."
     #TODO: Expose this less :-)
     freenect.sync_stop()
+    return frames_and_eeg_data
 
 
 def capture_all(person_name, emotions, duration):
     """Capture each emotion in turn"""
     print """I am going to prompt you to (pretend to) feel the following emotions for %s seconds each: %s""" % (duration, ', '.join(emotions))
+    captures = {}
     for emotion in emotions:
         if not os.path.exists(os.path.join(person_name, emotion)):
-            capture_one(person_name, emotion, duration)
+            capture = capture_one(emotion, duration)
+            captures[emotion] = capture
+    return captures
+
+
+def dump_all(person_name, emotions, captures):
+    """Save each emotion to file. This takes ages."""
+    print "Saving to file, this will take ages..."
+    for emotion in emotions:
+        person_emotion_path = os.path.join(person_name, emotion)
+        if not os.path.exists(person_emotion_path):
+            print "Saving %s..." % emotion
+            os.mkdir(person_emotion_path)
+            frames, eeg_data = captures[emotion]
+            eeg_data.to_tsv_files(person_emotion_path)
+            capture_expressions.dumpFrames(frames, person_emotion_path)
 
 
 ################################################################################
 # Main flow of execution
 ################################################################################
+
 
 def usage():
     """Print usage instructions"""
@@ -111,7 +124,9 @@ def main():
         print "Folder for %s exists. Adding any missing emotions." % person_name
     else:
         os.mkdir(person_name)
-    capture_all(person_name, EMOTIONS, SECONDS_TO_CAPTURE_EMOTION_FOR)
+    captures = capture_all(person_name, EMOTIONS,
+                           SECONDS_TO_CAPTURE_EMOTION_FOR)
+    dump_all(person_name, EMOTIONS, captures)
 
 
 if __name__ == "__main__":

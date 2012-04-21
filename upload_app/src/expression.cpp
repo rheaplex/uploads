@@ -67,11 +67,18 @@ static const int TEXTURE_HEIGHT = 480;
 // If we're debugging, how many frames to load
 static const unsigned int debug_frames_to_load = 10;
 
+// File extensions
+static const std::string xyz_extension = ".xyz.gz";
+static const std::string uv_extension = ".uv.gz";
+
 // The rear clipping plane distance
 static float rear_clip = 1.0;
 
 // The size of the squares for the voxel render
 static float voxel_size = 10.0;
+
+// The scale to apply to the voxels
+static float voxel_scale = 1.5;
 
 // Whether we are debugging
 static bool debugging = false;
@@ -81,7 +88,8 @@ static bool debugging = false;
 void expression_add_options(po::options_description & desc){
   desc.add_options()
     ("rear_clip", po::value<float>(), "distance to rear clipping pane (metres)")
-    ("voxel_size", po::value<float>(), "voxel size in pixels");
+    ("voxel_size", po::value<float>(), "voxel size in pixels")
+    ("voxel_scale", po::value<float>(), "how much to scale voxel space");
 }
 
 // Initialize the variables from Boost options
@@ -93,6 +101,9 @@ void expression_initialize(const po::variables_map & vm){
     voxel_size = vm["voxel_size"].as<float>();
   // Cheat and take our own copy
   debugging = vm.count("debug");
+
+  // This isn't taken from options, but we need somewhere to set it up
+  
 }
 
 
@@ -185,11 +196,13 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base){
   rgb.loadImage(path_root.string() + ".png");
   boost::shared_array<float> xyz;
   size_t num_coords = slurp_gzipped_csv_floats(xyz,
-					       path_root.string() + ".xyz",
+					       path_root.string() 
+					       + xyz_extension,
 					       3);
   boost::shared_array<float> uv;
   size_t other_num_coords = slurp_gzipped_csv_floats(uv,
-						     path_root.string() + ".uv",
+						     path_root.string()
+						     + uv_extension,
 						     2);
   // Move this to a non-debug check
   if(num_coords != other_num_coords){
@@ -246,32 +259,31 @@ void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
 // Render the frame
 
 void Frame::render(){
+  // Save current viewport
+  int old_viewport[4];
+  glGetIntegerv(GL_VIEWPORT, old_viewport);
+
+  // Set new viewport
   ofRectangle fb = face_bounds();
+  glViewport(fb.x, fb.y, fb.width, fb.height);
 
   // Enable depth testing
   glClear(GL_DEPTH_BUFFER_BIT);
   glEnable(GL_DEPTH_TEST);
   glPushMatrix();
 
-  //Clip to the face drawing area
-  glEnable(GL_SCISSOR_TEST);
-  glScissor(fb.x, fb.y, fb.width, fb.height);
-
   // Set up the projection matrix
   glMatrixMode(GL_PROJECTION);
   glPushMatrix();
   glLoadIdentity();
-  // 45 fits the clip area vertical extents nicely :-)
-  // This is cheating, we should scale. :-/
-  gluPerspective(45, 4/3.0, 0.0, rear_clip);
+  gluPerspective(60, 4/3.0, 0.0, rear_clip);
 
   // Set up the model matrix
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+  glScalef(voxel_scale, voxel_scale, 1.0);
 
-  // Centre the face view in the scissored region
-  glTranslatef(face_gl_offset_x(), 0, 0);
-
+  // Draw!
   rgb.bind();
   glPointSize(voxel_size);
   mesh.drawVertices();
@@ -283,6 +295,8 @@ void Frame::render(){
   glPopMatrix();
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_SCISSOR_TEST);
+  glViewport(old_viewport[0], old_viewport[1], old_viewport[2],
+	     old_viewport[3]);
 }
 
 
