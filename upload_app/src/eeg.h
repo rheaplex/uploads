@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    eeg.h - load serialized eeg data
-//    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -16,8 +16,7 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __EEG_H__
-#define __EEG_H__
+#pragma once
 
 #include <string>
 
@@ -35,6 +34,3 @@ void load_emotions(const std::string & name);
 
 void update_eegs(const std::string & emotion, double now);
 void draw_eegs();
-
-#endif
-

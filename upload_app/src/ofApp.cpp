@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    mainApp.cpp - main OpenFrameworks application
-//    Copyright (C) 2011, 2012  Rhea Myers <rhea@myers.studio>
+//    ofApp.cpp - main OpenFrameworks application
+//    Copyright (C) 2011, 2012, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -29,10 +29,11 @@ namespace po = boost::program_options;
 #include "layoutOptions.h"
 #include "twitterStreaming.h"
 
-#include "mainApp.h"
+#include "ofMain.h"
+#include "ofApp.h"
 
 //--------------------------------------------------------------
-mainApp::mainApp(int argc, char * argv[]):
+ofApp::ofApp(int argc, char * argv[]):
   previousEmotionReset(ofGetElapsedTimef()){
   // Set up the arguments
   po::options_description desc;
@@ -68,7 +69,7 @@ mainApp::mainApp(int argc, char * argv[]):
 
 
 //--------------------------------------------------------------
-void mainApp::setup(){
+void ofApp::setup(){
   // Load data from the specified
   load_emotions(this->data_path);
   load_expressions(this->data_path);
@@ -90,7 +91,7 @@ void mainApp::setup(){
 
 
 //--------------------------------------------------------------
-void mainApp::update(){
+void ofApp::update(){
   // Get the current time
   now = ofGetElapsedTimef();
 
@@ -119,7 +120,7 @@ void mainApp::update(){
 
 
 //--------------------------------------------------------------
-void mainApp::draw(){
+void ofApp::draw(){
   // If we haven't got any streaming results yet the emotion will be empty
   // and the state won't be configured
   // So try again next time
@@ -133,29 +134,29 @@ void mainApp::draw(){
 
 
 //--------------------------------------------------------------
-void mainApp::keyPressed(int key){
+void ofApp::keyPressed(int key){
 }
 
 //--------------------------------------------------------------
-void mainApp::keyReleased(int key){
+void ofApp::keyReleased(int key){
 }
 
 //--------------------------------------------------------------
-void mainApp::mouseMoved(int x, int y ){
+void ofApp::mouseMoved(int x, int y ){
 }
 
 //--------------------------------------------------------------
-void mainApp::mouseDragged(int x, int y, int button){
+void ofApp::mouseDragged(int x, int y, int button){
 }
 
 //--------------------------------------------------------------
-void mainApp::mousePressed(int x, int y, int button){
+void ofApp::mousePressed(int x, int y, int button){
 }
 
 //--------------------------------------------------------------
-void mainApp::mouseReleased(int x, int y, int button){
+void ofApp::mouseReleased(int x, int y, int button){
 }
 
 //--------------------------------------------------------------
-void mainApp::windowResized(int w, int h){
+void ofApp::windowResized(int w, int h){
 }

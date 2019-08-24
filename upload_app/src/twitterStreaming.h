@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    twitterStreaming.h - twitter streaming search
-//    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -16,8 +16,7 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _TWITTER_STREAMING_H_
-#define _TWITTER_STREAMING_H_
+#pragma once
 
 #include <string>
 
@@ -27,5 +26,3 @@ void twitter_initialize(const po::variables_map & vm);
 void start_twitter_search();
 void reset_twitter_emotion_map();
 void current_twitter_emotion(std::string & emotion);
-
-#endif

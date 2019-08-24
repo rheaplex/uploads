@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    eeg.cpp - load serialized eeg data
-//    Copyright (C) 2011, 2012  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2012, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@ namespace po = boost::program_options;
 
 #include "ofGraphics.h"
 #include "ofRectangle.h"
+#include "ofTrueTypeFont.h"
 
 #include "emotion.h"
 #include "layout.h"
@@ -59,10 +60,19 @@ namespace po = boost::program_options;
 // Whether we are debugging
 static bool debugging = false;
 
+// Our font
+
+ofTrueTypeFont lableFont;
+
 // Describe the options to Boost
 
 void eeg_add_options(po::options_description & desc){
-  // do nothing
+    desc.add_options()
+        ("font",
+         po::value<std::string>()->default_value(
+             "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf"
+         ),
+         "the full path to the TrueType font to use for lables");
 }
 
 // Initialize the variables from Boost options
@@ -70,6 +80,7 @@ void eeg_add_options(po::options_description & desc){
 void eeg_initialize(const po::variables_map & vm){
   // Cheat and take our own copy
   debugging = vm.count("debug");
+  lableFont.load(vm["font"].as<std::string>(), label_size_small());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -456,13 +467,13 @@ static const double levels_scale = 1.0 / (levels_max - levels_min);
 
 // The label for the Raw EEG plot
 
-std::string raw_label("raw eeg");
+const std::string raw_label("raw eeg");
 
 // Draw the frame for a wave plot
 
 void frame_wave(int index){
   ofRectangle & frame = eeg_bounds(index);
-  ofRect(frame.x, frame.y, frame.width, frame.height);
+  ofDrawRectangle(frame.x, frame.y, frame.width, frame.height);
 }
 
 // Plot a waveform
@@ -482,10 +493,10 @@ void draw_wave(int index, size_t count,
   ofEndShape();
 }
 
-void draw_label(int index, std::string & label){
+void draw_label(int index, const std::string & label){
   ofRectangle & frame = eeg_bounds(index);
-  ofDrawBitmapString(label, frame.x,
-		     frame.y + frame.height + label_size_small());
+  lableFont.drawString(label, frame.x,
+                       frame.y + frame.height + label_size_small());
 }
 
 // Draw the raw eeg and the primary processed values

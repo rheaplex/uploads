@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    main.cpp - main entry point
-//    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -17,9 +17,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ofMain.h"
-#include "ofAppGlutWindow.h"
-
-#include "mainApp.h"
+#include "ofApp.h"
 
 //========================================================================
 int main(int argc, char * argv[]){
@@ -27,5 +25,5 @@ int main(int argc, char * argv[]){
   ofAppGlutWindow window;
   ofSetupOpenGL(&window, 1024,768, OF_WINDOW); // <-------- setup the GL context
 
-  ofRunApp(new mainApp(argc, argv));
+  ofRunApp(new ofApp(argc, argv));
 }

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    emotion.h - the list of emotion names
-//    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -16,8 +16,7 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __EMOTIONS_H__
-#define __EMOTIONS_H__
+#pragma once
 
 #include <string>
 #include <vector>
@@ -25,5 +24,3 @@
 // The emotion names, ready to iterate
 
 extern const std::vector<std::string> emotions;
-
-#endif

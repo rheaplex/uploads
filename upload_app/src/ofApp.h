@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
-//    mainApp.h - main OpenFrameworks application
-//    Copyright (C) 2011, 2012  Rhea Myers <rhea@myers.studio>
+//    ofApp.h - main OpenFrameworks application
+//    Copyright (C) 2011, 2012, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -16,16 +16,15 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _MAIN_APP_H_
-#define _MAIN_APP_H_
+#pragma once
 
 #include <string>
 
 #include "ofMain.h"
 
-class mainApp : public ofBaseApp {  
+class ofApp : public ofBaseApp {
  public:
-  mainApp(int argc, char * argv[]);
+  ofApp(int argc, char * argv[]);
   void setup();
   void update();
   void draw();
@@ -48,5 +47,3 @@ class mainApp : public ofBaseApp {
   float       previousEmotionReset;
   bool        debugging;
 };
-
-#endif

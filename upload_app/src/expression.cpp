@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    expression.cpp - load serialized kinect frame data
-//    Copyright (C) 2011, 2012  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2012, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@ namespace po = boost::program_options;
 #include "ofAppRunner.h"
 #include "ofGraphics.h"
 #include "ofImage.h"
+#include "ofMesh.h"
 
 #include <GL/gl.h>
 #include <GL/glu.h>
@@ -117,7 +118,7 @@ void slurp_gzipped_lines(const std::string & path,
 			 std::vector<std::string> & lines){
   std::ifstream file(path);//, ios_base::in | ios_base::binary);
   if(! file) {
-    throw runtime_error("Problem opening file: " + path);
+    throw std::runtime_error("Problem opening file: " + path);
   }
   boost::iostreams::filtering_stream<boost::iostreams::input> in;
   in.push(boost::iostreams::gzip_decompressor());
@@ -193,7 +194,7 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base){
   // The path is of the format /a/b/c/2346.12
   when = std::atof(path_root.filename().c_str()) - when_base;
   // Load the texture map
-  rgb.loadImage(path_root.string() + ".png");
+  rgb.load(path_root.string() + ".png");
   boost::shared_array<float> xyz;
   size_t num_coords = slurp_gzipped_csv_floats(xyz,
 					       path_root.string() 
@@ -206,7 +207,7 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base){
 						     2);
   // Move this to a non-debug check
   if(num_coords != other_num_coords){
-    throw runtime_error("Coord count mismatch");
+    throw std::runtime_error("Coord count mismatch");
   }
   // Get the closest maximal distance to the y origin above or below it
   calculate_smallest_y_max(xyz, num_coords);
@@ -407,5 +408,5 @@ void draw_expression(){
   current_frame.render();
   ofRectangle bounds = face_bounds();
   ofNoFill();
-  ofRect(bounds);
+  ofDrawRectangle(bounds);
 }

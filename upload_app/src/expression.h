@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    expression.h - load serialized kinect frame data
-//    Copyright (C) 2011, 2012  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2012, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -16,14 +16,10 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef __EXPRESSION_H__
-#define __EXPRESSION_H__
+#pragma once
 
 void expression_add_options(po::options_description & desc);
 void expression_initialize(const po::variables_map & vm);
 void load_expressions(const std::string & person_dir);
 void update_expression(const std::string & emotion, double now);
 void draw_expression();
-
-#endif

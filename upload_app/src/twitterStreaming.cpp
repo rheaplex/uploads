@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //    twitter_streaming.cpp - twitter streaming search
-//    Copyright (C) 2011  Rhea Myers <rhea@myers.studio>
+//    Copyright (C) 2011, 2019 Rhea Myers <rhea@myers.studio>
 //
 //    This program is free software: you can redistribute it and/or modify
 //    it under the terms of the GNU General Public License as published by
@@ -236,7 +236,7 @@ void * run_streaming_search(void * user_pass){
     ::curl_easy_setopt(curl, CURLOPT_FRESH_CONNECT, 0);
     twitter_emotion_map = build_emotion_map();
     ::curl_easy_setopt(curl, CURLOPT_WRITEDATA, &twitter_emotion_map);
-    CURLcode result = ::curl_easy_perform(curl);
+    /*CURLcode result =*/ ::curl_easy_perform(curl);
     ::curl_easy_cleanup(curl);
     ::curl_global_cleanup();
   }
