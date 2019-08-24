@@ -3,8 +3,7 @@ puzzlebox-synapse/build
 emoload
 *.o
 *.d
-upload_app/obj/*
-upload_app/bin/libs/*
-upload_app/bin/upload_app
+upload_app/obj/
+upload_app/bin/
 *.pyc
 *.upload
