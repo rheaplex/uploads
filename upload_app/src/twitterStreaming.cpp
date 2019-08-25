@@ -187,7 +187,6 @@ void highest_emotion_count(emotion_map & emomap, std::string & emotion){
     }
   }
   emotion = max_name;
-  std::cout << emotion << std::endl;
 }
 
 void current_twitter_emotion(std::string & emotion){
