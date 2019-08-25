@@ -109,7 +109,7 @@ void twitter_initialize(const po::variables_map & vm){
   if(vm.count("twitter_auth")){
     userpass = vm["twitter_auth"].as<std::string>();
   }else{
-    std::cerr << "Please specify -twitter_auth username:password" << std::endl;
+    std::cerr << "Please specify --twitter_auth username:password" << std::endl;
     ::exit(-1);
   }
   if(vm.count("twitter_location"))
@@ -187,6 +187,7 @@ void highest_emotion_count(emotion_map & emomap, std::string & emotion){
     }
   }
   emotion = max_name;
+  std::cout << emotion << std::endl;
 }
 
 void current_twitter_emotion(std::string & emotion){
@@ -201,7 +202,7 @@ void current_twitter_emotion(std::string & emotion){
 // The function called by curl when data is received from Twitter
 
 size_t curl_callback_fun(void * ptr, size_t size, size_t nmemb,
-			 void * userdata){
+                         void * userdata){
   size_t data_length = size * nmemb;
   std::string data(reinterpret_cast<char *>(ptr), data_length);
   //std::cout << data << std::endl;

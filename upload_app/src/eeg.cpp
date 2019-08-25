@@ -62,6 +62,7 @@ static bool debugging = false;
 
 // Our font
 
+static const unsigned int labelFontSize = 8;
 ofTrueTypeFont lableFont;
 
 // Describe the options to Boost
@@ -80,7 +81,7 @@ void eeg_add_options(po::options_description & desc){
 void eeg_initialize(const po::variables_map & vm){
   // Cheat and take our own copy
   debugging = vm.count("debug");
-  lableFont.load(vm["font"].as<std::string>(), label_size_small());
+  lableFont.load(vm["font"].as<std::string>(), labelFontSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

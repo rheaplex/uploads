@@ -73,7 +73,7 @@ static const std::string xyz_extension = ".xyz.gz";
 static const std::string uv_extension = ".uv.gz";
 
 // The rear clipping plane distance
-static float rear_clip = 1.0;
+static float rear_clip = 1.2;
 
 // The size of the squares for the voxel render
 static float voxel_size = 10.0;
@@ -102,9 +102,6 @@ void expression_initialize(const po::variables_map & vm){
     voxel_size = vm["voxel_size"].as<float>();
   // Cheat and take our own copy
   debugging = vm.count("debug");
-
-  // This isn't taken from options, but we need somewhere to set it up
-  
 }
 
 
@@ -221,7 +218,7 @@ Frame::Frame(const boost::filesystem::path & path_root, double when_base){
     // Z Clip here rather than during rendering
     // Note that we compare abs(x) to max y to make the mesh roughly square
     if((std::abs(point[2]) < rear_clip) || 
-       (std::abs(point[1]) > smallest_y_max)){ // 
+       (std::abs(point[1]) > smallest_y_max)){
       float * tex = uv.get() + (i * 2);
       // No, don't flip the Vs
       // Flip the Vs: rgb.height is zero at this point(!), so use the constant
@@ -271,6 +268,7 @@ void Frame::render(){
   // Enable depth testing
   glClear(GL_DEPTH_BUFFER_BIT);
   glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LEQUAL);
   glPushMatrix();
 
   // Set up the projection matrix
@@ -295,9 +293,9 @@ void Frame::render(){
   glMatrixMode(GL_PROJECTION);
   glPopMatrix();
   glDisable(GL_DEPTH_TEST);
-  glDisable(GL_SCISSOR_TEST);
+  //glDisable(GL_SCISSOR_TEST);
   glViewport(old_viewport[0], old_viewport[1], old_viewport[2],
-	     old_viewport[3]);
+             old_viewport[3]);
 }
 
 
@@ -340,13 +338,13 @@ void load_expression(const std::string & emotion_dir,
       std::cerr << path.string() << std::endl;
       // We need to set the base timestamp from the first png filename
       if(when_base == -1.0){
-	when_base = std::atof(path.filename().c_str());
+        when_base = std::atof(path.filename().c_str());
       }
       Frame frame(path, when_base);
       frames.push_back(frame);
       loaded_count++;
       if(debugging && (loaded_count > debug_frames_to_load)) {
-	break;
+        break;
       }
     }
   }
