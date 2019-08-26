@@ -25,7 +25,7 @@ The c++ code requires OpenFrameworks (currently v007):
 
 http://www.openframeworks.cc/download/
 
-Other libraries, particularly Freenect, can be installed using your distro's package manager.
+Other libraries, particularly boost and Freenect, can be installed using your distro's package manager.
 
 upload_capture can simply be run from the command line (see the next section).
 
@@ -48,6 +48,11 @@ upload_capture is a Python application that captures Mindwave eeg data and Kinec
     python upload_capture.py me-20120415.upload
 
 This will prompt you to (pretend to) feel various emotions, and capture the resulting data to a folder called me-20120415.upload.
+
+convert_format
+--------------
+
+This converts the data output by upload_capture into the new format used by upload_app. Future versions of uplaod_capture will generate this format directly.
 
 upload_app
 ----------

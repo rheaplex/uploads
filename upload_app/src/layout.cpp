@@ -58,11 +58,11 @@ namespace{
 
   // The gap between each eeg graph (b-cells, as opposed to the face a-cell)
   // Just use inner border? Default to it...
-  float b_cell_vertical_padding = outer_border_width;
+  float b_cell_vertical_padding = inner_border_width;
   
   // Labels
   float large_label_size = 12;
-  float small_label_size = 12;
+  float small_label_size = 8;
 
   // These are the values from the eegs to use
   // eeg_above is exclusive
@@ -129,7 +129,7 @@ ofRectangle & eeg_bounds(int index){
 
 float face_gl_offset_x() {
   // No idea :-(
-  return -0.100;
+  return 0.0;//-0.100;
 }
 
 
@@ -155,13 +155,17 @@ void calculate_face_bounds(){
 
 void calculate_eeg_bounds(int index, int count, ofRectangle & bounds){
   float b_width = (screen_width / (float)h_cells_count) * ((float)h_cells_eegs);
-  float b_height = screen_height - (outer_border_width * 2.0);
-  float cell_vertical_offset = b_height / count;
+  // We want the bottom-most label to look like it is aligned with the stroke
+  // of the face rectangle. So we fuzz this a bit.
+  float b_height_fuzz = ((eeg_padding_v() - label_size_small()) / 2.0)
+      + line_width_frame;
+  float b_height = screen_height - ((outer_border_width * 2.0) - b_height_fuzz);
+  float cell_vertical_offset = b_height / (float)count;
 
   bounds.x = screen_width + inner_border_width - b_width;
-  bounds.y = outer_border_width + (cell_vertical_offset * index);
+  bounds.y = outer_border_width + (cell_vertical_offset * (float)index);
   bounds.width = b_width - (outer_border_width + inner_border_width);
-  bounds.height = cell_vertical_offset - inner_border_width;
+  bounds.height = cell_vertical_offset - eeg_padding_v();
 }
 
 // Calculate the bounds for all the b-cells

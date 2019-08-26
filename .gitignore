@@ -5,5 +5,6 @@ emoload
 *.d
 upload_app/obj/
 upload_app/bin/
+convert_format/convert_format
 *.pyc
 *.upload

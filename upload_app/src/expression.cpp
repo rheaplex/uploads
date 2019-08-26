@@ -71,9 +71,13 @@ static const unsigned int debug_frames_to_load = 10;
 // File extensions
 static const std::string xyz_extension = ".xyz.gz";
 static const std::string uv_extension = ".uv.gz";
+static const std::string xyz_bin_extension = ".xyz.bin";
+static const std::string uv_bin_extension = ".uv.bin";
 
-// The rear clipping plane distance
-static float rear_clip = 1.2;
+
+// The clipping plane distances
+static float near_clip = 0.4;
+static float far_clip = 1.4;
 
 // The size of the squares for the voxel render
 static float voxel_size = 10.0;
@@ -88,7 +92,8 @@ static bool debugging = false;
 
 void expression_add_options(po::options_description & desc){
   desc.add_options()
-    ("rear_clip", po::value<float>(), "distance to rear clipping pane (metres)")
+    ("near_clip", po::value<float>(), "distance to near clipping pane (metres)")
+    ("far_clip", po::value<float>(), "distance to far clipping pane (metres)")
     ("voxel_size", po::value<float>(), "voxel size in pixels")
     ("voxel_scale", po::value<float>(), "how much to scale voxel space");
 }
@@ -96,55 +101,14 @@ void expression_add_options(po::options_description & desc){
 // Initialize the variables from Boost options
 
 void expression_initialize(const po::variables_map & vm){
-  if(vm.count("rear_clip"))
-    rear_clip = vm["rear_clip"].as<float>();
+  if(vm.count("near_clip"))
+    near_clip = vm["near_clip"].as<float>();
+  if(vm.count("far_clip"))
+    far_clip = vm["far_clip"].as<float>();
   if(vm.count("voxel_size"))
     voxel_size = vm["voxel_size"].as<float>();
   // Cheat and take our own copy
   debugging = vm.count("debug");
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// File loading
-////////////////////////////////////////////////////////////////////////////////
-
-// Load the lines of a gzipped text file into a vector of strings
-
-void slurp_gzipped_lines(const std::string & path,
-			 std::vector<std::string> & lines){
-  std::ifstream file(path);//, ios_base::in | ios_base::binary);
-  if(! file) {
-    throw std::runtime_error("Problem opening file: " + path);
-  }
-  boost::iostreams::filtering_stream<boost::iostreams::input> in;
-  in.push(boost::iostreams::gzip_decompressor());
-  in.push(file);
-  std::string line;
-  while(std::getline(in, line)){
-    lines.push_back(line);
-  }
-}
-
-// Load the values of a gzipped tsv file into an array of floats
-
-size_t slurp_gzipped_csv_floats(boost::shared_array<float> & values,
-				const std::string & path,
-				int stride){
-  std::vector<std::string> lines;
-  slurp_gzipped_lines(path, lines);
-  values = boost::shared_array<float>(new float[lines.size() * stride]);
-  typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
-  boost::char_separator<char> sep("\t");
-  for(size_t i = 0; i < lines.size(); i++){
-    tokenizer::iterator tokens = tokenizer(lines[i], sep).begin();
-    int index = i * stride;
-    for(int j = 0; j < stride; j++){
-      values[index + j] = std::atof((*tokens).c_str());
-      tokens++;
-    }
-  }
-  return lines.size();
 }
 
 
@@ -162,17 +126,12 @@ public:
   ~Frame();
   void render();
 
-private:
-  void calculate_smallest_y_max(boost::shared_array<float> & xyz,
-				size_t coord_count);
-
 public:
   double when;
 
 private:
   ofImage rgb;
   ofMesh mesh;
-  float smallest_y_max;
 };
 
 // The map of emotion names to vectors of frames
@@ -190,68 +149,33 @@ Frame::Frame(){
 Frame::Frame(const boost::filesystem::path & path_root, double when_base){
   // The path is of the format /a/b/c/2346.12
   when = std::atof(path_root.filename().c_str()) - when_base;
-  // Load the texture map
-  rgb.load(path_root.string() + ".png");
-  boost::shared_array<float> xyz;
-  size_t num_coords = slurp_gzipped_csv_floats(xyz,
-					       path_root.string() 
-					       + xyz_extension,
-					       3);
-  boost::shared_array<float> uv;
-  size_t other_num_coords = slurp_gzipped_csv_floats(uv,
-						     path_root.string()
-						     + uv_extension,
-						     2);
-  // Move this to a non-debug check
-  if(num_coords != other_num_coords){
-    throw std::runtime_error("Coord count mismatch");
-  }
-  // Get the closest maximal distance to the y origin above or below it
-  calculate_smallest_y_max(xyz, num_coords);
-  // Create the mesh
   mesh.setMode(OF_PRIMITIVE_POINTS);
   // Scale the points to window co-ordinates
   ofRectangle fb = face_bounds();
-  //float scale = (fb.height / smallest_y_max) / 2.0;
-  for(size_t i = 0; i < num_coords; i++){
-    float * point = xyz.get() + (i * 3);
-    // Z Clip here rather than during rendering
-    // Note that we compare abs(x) to max y to make the mesh roughly square
-    if((std::abs(point[2]) < rear_clip) || 
-       (std::abs(point[1]) > smallest_y_max)){
-      float * tex = uv.get() + (i * 2);
-      // No, don't flip the Vs
-      // Flip the Vs: rgb.height is zero at this point(!), so use the constant
-      mesh.addTexCoord(ofVec2f(tex[0], /*TEXTURE_HEIGHT -*/ tex[1]));
-      //mesh.addVertex(ofVec3f(point[0] * scale, point[1] * scale, point[2]));
-      mesh.addVertex(ofVec3f(point[0], point[1], point[2]));
-    }
+  // Load the texture map
+  rgb.load(path_root.string() + ".png");
+  // Load the point and uv co-ords
+  std::ifstream xyz(path_root.string() + xyz_bin_extension, std::ios::binary);
+  std::ifstream uv(path_root.string() + uv_bin_extension, std::ios::binary);
+  // We don't know *exactly* how many coords there will be, so just read until
+  // we run out. If there's a mismatch between xyz and uv counts, this will
+  // raise an exception.
+  while(!xyz.eof()) {
+    float point[3];
+    xyz.read(reinterpret_cast<char*>(&point), sizeof(float) * 3);
+    float tex[2];
+    uv.read(reinterpret_cast<char*>(&tex), sizeof(float) * 2);
+    mesh.addVertex(ofVec3f(point[0], point[1], point[2]));
+    mesh.addTexCoord(ofVec2f(tex[0], tex[1]));
+    mesh.addColor(rgb.getColor(tex[0], tex[1]));
   }
+  xyz.close();
+  uv.close();
 }
 
 // Destructor
 
 Frame::~Frame(){
-}
-
-// Calculate the smallest maximum value above or below the y origin
-// e.g. if the range of y values is -1.23..4.56, this returns 1.23
-
-void Frame::calculate_smallest_y_max(boost::shared_array<float> & xyz,
-				     size_t coord_count){
-  // The lowest negative value. So min neg, but you get the idea...
-  float max_neg = 0.0;
-  float max_pos = 0.0;
-  for(size_t i = 0; i < coord_count; i++){
-    double y = xyz[(3 * i) + 1];
-    if(y > max_pos){
-      max_pos = y;
-    }
-    else if(y < max_neg){
-      max_neg = y;
-    }
-  }
-  smallest_y_max = std::min(std::fabs(max_neg), max_pos);
 }
 
 // Render the frame
@@ -275,7 +199,7 @@ void Frame::render(){
   glMatrixMode(GL_PROJECTION);
   glPushMatrix();
   glLoadIdentity();
-  gluPerspective(60, 4/3.0, 0.0, rear_clip);
+  gluPerspective(60, 4/3.0, near_clip, far_clip);
 
   // Set up the model matrix
   glMatrixMode(GL_MODELVIEW);

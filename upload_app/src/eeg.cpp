@@ -62,7 +62,6 @@ static bool debugging = false;
 
 // Our font
 
-static const unsigned int labelFontSize = 8;
 ofTrueTypeFont lableFont;
 
 // Describe the options to Boost
@@ -81,7 +80,7 @@ void eeg_add_options(po::options_description & desc){
 void eeg_initialize(const po::variables_map & vm){
   // Cheat and take our own copy
   debugging = vm.count("debug");
-  lableFont.load(vm["font"].as<std::string>(), labelFontSize);
+  lableFont.load(vm["font"].as<std::string>(), label_size_small());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -497,7 +496,11 @@ void draw_wave(int index, size_t count,
 void draw_label(int index, const std::string & label){
   ofRectangle & frame = eeg_bounds(index);
   lableFont.drawString(label, frame.x,
-                       frame.y + frame.height + label_size_small());
+                       //FIXME: Have method in layout to calculate this properly
+                       frame.y
+                       + frame.height
+                       + label_size_small()
+                       + (frame_line_width() * 2));
 }
 
 // Draw the raw eeg and the primary processed values
