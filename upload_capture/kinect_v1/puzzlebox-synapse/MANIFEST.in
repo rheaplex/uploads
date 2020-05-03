@@ -1,0 +1,4 @@
+include LICENSE.txt
+include puzzlebox_synapse_configuration.ini
+include puzzlebox_synapse.desktop
+include images/*
