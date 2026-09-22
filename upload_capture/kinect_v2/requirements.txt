@@ -1,0 +1,7 @@
+freenect2
+numpy
+pillow
+simplejson
+pyside
+serial
+matplotlib

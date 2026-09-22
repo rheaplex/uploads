@@ -17,7 +17,7 @@
 #pragma once
 
 extern const unsigned int NUM_EMOTIONS;
-extern const char * EMOTIONS[];
+extern const std::vector<std::string> EMOTIONS;
 
 // How many seconds of data to capture each emotion for
 extern const unsigned int SECONDS_TO_CAPTURE_EMOTION_FOR;

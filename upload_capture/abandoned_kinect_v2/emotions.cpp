@@ -14,16 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <string>
+#include <vector>
+
 #include "emotions.h"
 
 // The emotions to capture. For more information, see:
 // https://en.wikipedia.org/wiki/Emotion_classification//Basic_and_Complex_Emotions
-const unsigned int NUM_EMOTIONS = 6;
-const char * EMOTIONS[NUM_EMOTIONS] =
+const std::vector<std::string> EMOTIONS = {
 // Ekman
-//{"anger", "disgust", "fear", "happiness", "sadness", "surprise"};
+// "anger", "disgust", "fear", "happiness", "sadness", "surprise"
 // Descartes
-{"wonder", "love", "hatred", "desire", "joy", "sadness"};
+    "wonder", "love", "hatred", "desire", "joy", "sadness"
+};
+
+const unsigned int NUM_EMOTIONS = EMOTIONS.size();
 
 // How many seconds of data to capture each emotion for
 const unsigned int SECONDS_TO_CAPTURE_EMOTION_FOR = 10;
